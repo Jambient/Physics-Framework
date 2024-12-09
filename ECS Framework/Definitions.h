@@ -3,7 +3,7 @@
 #include <bitset>
 
 using Entity = std::uint32_t;
-const Entity MAX_ENTITIES = 5000;
+const Entity MAX_ENTITIES = 100000;
 
 using ComponentType = std::uint8_t;
 const std::size_t MAX_COMPONENT_TYPES = 32;

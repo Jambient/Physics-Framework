@@ -12,6 +12,7 @@
 struct InstanceData
 {
 	XMFLOAT3 Position;
+	XMFLOAT3 Scale;
 };
 
 /**

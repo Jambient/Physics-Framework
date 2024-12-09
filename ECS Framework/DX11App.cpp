@@ -53,6 +53,7 @@ HRESULT DX11App::Init()
         { "TANGENT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 
         { "INSTANCE_POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+        { "INSTANCE_SCALE", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
     };
 
     // get an instance of the shader manager and initialize it
@@ -118,7 +119,7 @@ HRESULT DX11App::Init()
     std::vector<Entity> entities(MAX_ENTITIES);
 
     std::default_random_engine generator;
-    std::uniform_real_distribution<float> randPosition(-100.0f, 100.0f);
+    std::uniform_real_distribution<float> randPosition(-500.0f, 500.0f);
     std::uniform_real_distribution<float> randRotation(0.0f, 3.0f);
     std::uniform_real_distribution<float> randScale(3.0f, 5.0f);
     std::uniform_real_distribution<float> randGravity(-10.0f, -1.0f);
@@ -237,8 +238,9 @@ void DX11App::Update()
     // update instance data
     for (Entity i = 0; i < MAX_ENTITIES; i++)
     {
-        Transform& transform = m_scene.GetComponent<Transform>(i);
+        const Transform& transform = m_scene.GetComponent<Transform>(i);
         m_instanceData[i].Position = transform.Position;
+        m_instanceData[i].Scale = transform.Scale;
     }
 
     D3D11_MAPPED_SUBRESOURCE mappedResource;

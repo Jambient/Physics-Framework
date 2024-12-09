@@ -34,12 +34,12 @@ struct VS_Out
     float3 bitangent : BINORMAL;
 };
 
-VS_Out VS_main(float3 Position : POSITION, float3 Normal : NORMAL, float2 TexCoord : TEXCOORD, float4 Tangent : TANGENT, float3 InstancePos : INSTANCE_POSITION)
+VS_Out VS_main(float3 Position : POSITION, float3 Normal : NORMAL, float2 TexCoord : TEXCOORD, float4 Tangent : TANGENT, float3 InstancePos : INSTANCE_POSITION, float3 InstanceScale : INSTANCE_SCALE)
 {   
     VS_Out output = (VS_Out)0;
     
     float3x3 rotation = (float3x3) World;
-    float3 worldPosition = Position + InstancePos;
+    float3 worldPosition = Position * InstanceScale + InstancePos;
     
     output.position = mul(mul(float4(worldPosition, 1.0f), View), Projection);
     
