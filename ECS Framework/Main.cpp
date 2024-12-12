@@ -2,14 +2,19 @@
 #include <windowsx.h>
 #include "DX11Framework.h"
 #include "DX11App.h"
+#include "imgui.h"
+#include "imgui_impl_win32.h"
+#include "imgui_impl_dx11.h"
 #include <iostream>
 
-//Dependencies:user32.lib;d3d11.lib;d3dcompiler.lib;dxgi.lib;
-
 DX11Framework* g_application;
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
+		return true;
+
 	PAINTSTRUCT ps;
 	HDC hdc;
 

@@ -2,6 +2,9 @@
 #include "ShaderManager.h"
 #include "Components.h"
 #include "PhysicsSystem.h"
+#include "imgui.h"
+#include "imgui_impl_win32.h"
+#include "imgui_impl_dx11.h"
 #include <iostream>
 #include <stdexcept>
 #include <random>
@@ -162,6 +165,16 @@ HRESULT DX11App::Init()
     // load cube mesh
     m_cubeMeshData = OBJLoader::Load("Models/Cube.obj", m_device, false);
 
+    // initialise ImGui
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplWin32_Init(m_windowHandle);
+    ImGui_ImplDX11_Init(m_device, m_immediateContext);
+
     return hr;
 }
 
@@ -234,11 +247,14 @@ void DX11App::Update()
 
     // update systems
     m_physicsSystem->Update(deltaTime);
+    const std::vector<Transform>& transforms = m_scene.GetAllComponents<Transform>();
 
     // update instance data
     for (Entity i = 0; i < MAX_ENTITIES; i++)
     {
+        //const Transform& transform = transforms[i];
         const Transform& transform = m_scene.GetComponent<Transform>(i);
+        const RigidBody& body = m_scene.GetComponent<RigidBody>(i);
         m_instanceData[i].Position = transform.Position;
         m_instanceData[i].Scale = transform.Scale;
     }
@@ -248,6 +264,12 @@ void DX11App::Update()
     ThrowIfFailed(hr);
     memcpy(mappedResource.pData, m_instanceData.data(), sizeof(InstanceData) * MAX_ENTITIES);
     m_immediateContext->Unmap(m_instanceBuffer, 0);
+
+    // start imgui frame
+    ImGui_ImplDX11_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+    ImGui::ShowDemoWindow(); // Show demo window! :)
 }
 
 void DX11App::Draw()
@@ -282,6 +304,10 @@ void DX11App::Draw()
     m_immediateContext->IASetIndexBuffer(m_cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
     m_immediateContext->DrawInstanced(m_cubeMeshData.VerticesCount, MAX_ENTITIES, 0, 0);
+
+    // draw imgui
+    ImGui::Render();
+    ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
     // present the backbuffer to the screen
     m_swapChain->Present(0, 0);

@@ -128,6 +128,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Archetype.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="ComponentManager.h" />
     <ClInclude Include="Components.h" />
@@ -135,6 +136,15 @@
     <ClInclude Include="DX11App.h" />
     <ClInclude Include="DX11Framework.h" />
     <ClInclude Include="EntityManager.h" />
+    <ClInclude Include="imconfig.h" />
+    <ClInclude Include="imgui.h" />
+    <ClInclude Include="imgui_impl_dx11.h" />
+    <ClInclude Include="imgui_impl_win32.h" />
+    <ClInclude Include="imgui_internal.h" />
+    <ClInclude Include="imgui_stdlib.h" />
+    <ClInclude Include="imstb_rectpack.h" />
+    <ClInclude Include="imstb_textedit.h" />
+    <ClInclude Include="imstb_truetype.h" />
     <ClInclude Include="OBJLoader.h" />
     <ClInclude Include="Octree.h" />
     <ClInclude Include="PhysicsSystem.h" />
@@ -156,6 +166,14 @@
     <ClCompile Include="DX11App.cpp" />
     <ClCompile Include="DX11Framework.cpp" />
     <ClCompile Include="EntityManager.cpp" />
+    <ClCompile Include="imgui.cpp" />
+    <ClCompile Include="imgui_demo.cpp" />
+    <ClCompile Include="imgui_draw.cpp" />
+    <ClCompile Include="imgui_impl_dx11.cpp" />
+    <ClCompile Include="imgui_impl_win32.cpp" />
+    <ClCompile Include="imgui_stdlib.cpp" />
+    <ClCompile Include="imgui_tables.cpp" />
+    <ClCompile Include="imgui_widgets.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="OBJLoader.cpp" />
     <ClCompile Include="Octree.cpp" />
