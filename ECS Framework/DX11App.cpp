@@ -180,14 +180,7 @@ HRESULT DX11App::Init()
 
 void DX11App::Update()
 {
-    // static initializes this value only once    
-    static ULONGLONG frameStart = GetTickCount64();
-
-    // calculate the frame delta time and update the elapsed time
-    ULONGLONG frameNow = GetTickCount64();
-    float deltaTime = (frameNow - frameStart) / 1000.0f;
-    elapsedTime += deltaTime;
-    frameStart = frameNow;
+    double deltaTime = m_timer.GetDeltaTime();
 
     // update window text
     m_timeSinceLastTitleUpdate += deltaTime;
@@ -212,7 +205,7 @@ void DX11App::Update()
     }
 
     // store the elapsed time in the global buffer
-    m_globalBufferData.TimeStamp = elapsedTime;
+    m_globalBufferData.TimeStamp = (float)m_timer.GetElapsedTime();
 
     // handle input for moving the camera
     XMFLOAT3 movementInput = XMFLOAT3(0.0f, 0.0f, 0.0f);
@@ -246,10 +239,21 @@ void DX11App::Update()
     m_transformBufferData.Projection = XMMatrixTranspose(m_camera->GetProjection());
 
     // update systems
-    m_physicsSystem->Update(deltaTime);
-    const std::vector<Transform>& transforms = m_scene.GetAllComponents<Transform>();
+    m_physicsAccumulator += deltaTime;
+
+    while (m_physicsAccumulator >= FPS60)
+    {
+        m_physicsSystem->Update(FPS60);
+        m_physicsAccumulator -= FPS60;
+        std::cout << "Updated during this frame." << std::endl;
+        // also need to have individual elapsed time for system
+    }
+
+    std::cout << "----------------------------" << std::endl;
 
     // update instance data
+    const std::vector<Transform>& transforms = m_scene.GetAllComponents<Transform>();
+
     for (Entity i = 0; i < MAX_ENTITIES; i++)
     {
         //const Transform& transform = transforms[i];
@@ -269,7 +273,9 @@ void DX11App::Update()
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
-    ImGui::ShowDemoWindow(); // Show demo window! :)
+    ImGui::ShowDemoWindow();
+
+    m_timer.Tick();
 }
 
 void DX11App::Draw()

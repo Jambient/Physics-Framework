@@ -12,7 +12,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
+	if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam) > 0)
 		return true;
 
 	PAINTSTRUCT ps;

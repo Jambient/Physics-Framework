@@ -7,6 +7,7 @@
 #include "OBJLoader.h"
 #include "Scene.h"
 #include "PhysicsSystem.h"
+#include "Timer.h"
 #include <vector>
 
 struct InstanceData
@@ -57,11 +58,10 @@ private:
 	XMINT2 m_lastMousePos;
 	Camera* m_camera;
 
-	// stores the sum of all delta time values
-	float elapsedTime;
-
 	Scene m_scene;
 	std::shared_ptr<PhysicsSystem> m_physicsSystem;
+	double m_physicsAccumulator = 0.0;
+	Timer m_timer;
 
 	// mesh data
 	MeshData m_cubeMeshData;

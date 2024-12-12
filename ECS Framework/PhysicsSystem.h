@@ -5,14 +5,9 @@
 class PhysicsSystem : public System
 {
 public:
-	void Update(float dt)
+	void Update(double dt)
 	{
 		std::vector<Transform>& transformComponents = m_scene->GetAllComponents<Transform>();
-		/*for (Transform& transform : transformComponents)
-		{
-			transform.Position.y += -2.0f * dt;
-		}*/
-
 		std::vector<RigidBody>& rigidBodyComponents = m_scene->GetAllComponents<RigidBody>();
 		const std::vector<Gravity>& gravityComponents = m_scene->GetAllComponents<Gravity>();
 
