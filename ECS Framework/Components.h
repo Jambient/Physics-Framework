@@ -1,22 +1,20 @@
 #pragma once
-#include <DirectXMath.h>
-
-using namespace DirectX;
+#include "Vector3.h"
 
 struct Transform
 {
-	XMFLOAT3 Position = XMFLOAT3(0.0f, 0.0f, 0.0f);
-	XMFLOAT3 Rotation = XMFLOAT3(0.0f, 0.0f, 0.0f);
-	XMFLOAT3 Scale = XMFLOAT3(0.0f, 0.0f, 0.0f);
+	Vector3 Position = Vector3::Zero;
+	Vector3 Rotation = Vector3::Zero;
+	Vector3 Scale = Vector3::One;
 };
 
 struct Gravity
 {
-	XMFLOAT3 Force = XMFLOAT3(0.0f, 0.0f, 0.0f);
+	Vector3 Force = Vector3::Zero;
 };
 
 struct RigidBody
 {
-	XMFLOAT3 Velocity = XMFLOAT3(0.0f, 0.0f, 0.0f);
-	XMFLOAT3 Acceleration = XMFLOAT3(0.0f, 0.0f, 0.0f);
+	Vector3 Velocity = Vector3::Zero;
+	Vector3 Acceleration = Vector3::Zero;
 };

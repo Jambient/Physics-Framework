@@ -113,7 +113,10 @@ HRESULT DX11App::Init()
     m_physicsSystem = m_scene.RegisterSystem<PhysicsSystem>();
     m_physicsSystem->m_scene = &m_scene;
 
-    Signature objectSignature;
+    Entity e1 = m_scene.CreateEntity();
+    m_scene.AddComponent(e1, Gravity{ Vector3::Zero });
+
+    /*Signature objectSignature;
     objectSignature.set(m_scene.GetComponentType<Gravity>());
     objectSignature.set(m_scene.GetComponentType<RigidBody>());
     objectSignature.set(m_scene.GetComponentType<Transform>());
@@ -133,20 +136,20 @@ HRESULT DX11App::Init()
 
         m_scene.AddComponent(
             entity, 
-            Gravity{ XMFLOAT3(0.0f, randGravity(generator), 0.0f) });
+            Gravity{ Vector3(0.0f, randGravity(generator), 0.0f) });
 
         m_scene.AddComponent(
             entity,
             RigidBody{ { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } });
 
-        XMFLOAT3 objectPosition = XMFLOAT3(randPosition(generator), randPosition(generator), randPosition(generator));
-        XMFLOAT3 objectRotation = XMFLOAT3(randRotation(generator), randRotation(generator), randRotation(generator));
-        XMFLOAT3 objectScale = XMFLOAT3(randScale(generator), randScale(generator), randScale(generator));
+        Vector3 objectPosition = Vector3(randPosition(generator), randPosition(generator), randPosition(generator));
+        Vector3 objectRotation = Vector3(randRotation(generator), randRotation(generator), randRotation(generator));
+        Vector3 objectScale = Vector3(randScale(generator), randScale(generator), randScale(generator));
 
         m_scene.AddComponent(
             entity,
             Transform{ objectPosition, objectRotation, objectScale });
-    }
+    }*/
 
     m_instanceData.resize(MAX_ENTITIES);
 
@@ -243,25 +246,20 @@ void DX11App::Update()
 
     while (m_physicsAccumulator >= FPS60)
     {
-        m_physicsSystem->Update(FPS60);
+        //m_physicsSystem->Update(FPS60);
         m_physicsAccumulator -= FPS60;
-        std::cout << "Updated during this frame." << std::endl;
         // also need to have individual elapsed time for system
     }
 
-    std::cout << "----------------------------" << std::endl;
-
     // update instance data
-    const std::vector<Transform>& transforms = m_scene.GetAllComponents<Transform>();
+    /*const std::vector<Transform>& transforms = m_scene.GetAllComponents<Transform>();
 
     for (Entity i = 0; i < MAX_ENTITIES; i++)
     {
-        //const Transform& transform = transforms[i];
-        const Transform& transform = m_scene.GetComponent<Transform>(i);
-        const RigidBody& body = m_scene.GetComponent<RigidBody>(i);
+        const Transform& transform = transforms[i];
         m_instanceData[i].Position = transform.Position;
         m_instanceData[i].Scale = transform.Scale;
-    }
+    }*/
 
     D3D11_MAPPED_SUBRESOURCE mappedResource;
     HRESULT hr = m_immediateContext->Map(m_instanceBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
@@ -316,7 +314,7 @@ void DX11App::Draw()
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
     // present the backbuffer to the screen
-    m_swapChain->Present(0, 0);
+    m_swapChain->Present(1, 0);
 }
 
 void DX11App::OnMouseMove(WPARAM btnState, int x, int y)

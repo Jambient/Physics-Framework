@@ -8,12 +8,13 @@
 #include "Scene.h"
 #include "PhysicsSystem.h"
 #include "Timer.h"
+#include "Vector3.h"
 #include <vector>
 
 struct InstanceData
 {
-	XMFLOAT3 Position;
-	XMFLOAT3 Scale;
+	Vector3 Position;
+	Vector3 Scale;
 };
 
 /**
