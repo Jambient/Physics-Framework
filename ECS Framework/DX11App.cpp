@@ -115,6 +115,7 @@ HRESULT DX11App::Init()
 
     Entity e1 = m_scene.CreateEntity();
     m_scene.AddComponent(e1, Gravity{ Vector3::Zero });
+    m_scene.AddComponent(e1, RigidBody{ Vector3::Zero, Vector3::Zero });
 
     /*Signature objectSignature;
     objectSignature.set(m_scene.GetComponentType<Gravity>());

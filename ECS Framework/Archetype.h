@@ -5,9 +5,14 @@
 #include <cstdlib> // For malloc, free
 #include <cassert>
 #include <cstring> // For memcpy
+#include <unordered_map>
+#include <array>
 
-// TODO: I never actually use the map lookup for passing component data in
-// perhaps this could just be an array
+struct ComponentData
+{
+	ComponentType type;
+	void* data;
+};
 
 // type-erased buffer for component data
 struct Column
@@ -15,6 +20,8 @@ struct Column
 	void* m_elements;      // buffer with component data
 	size_t m_elementSize;  // size of a single element
 	size_t m_count;        // number of elements
+
+	Column() {};
 
 	Column(size_t elementSize)
 		: m_elements(nullptr), m_elementSize(elementSize), m_count(0) {}
@@ -75,43 +82,45 @@ struct Column
 class Archetype
 {
 public:
-	Archetype(Signature signature, size_t* componentSizes)
+	Archetype(Signature signature, std::array<size_t, MAX_COMPONENT_TYPES>& componentSizes) : m_entityToDenseIndex(MAX_ENTITIES, UINT32_MAX)
 	{
 		m_signature = signature;
+		m_entityCount = 0;
 		
 		for (size_t i = 0; i < MAX_COMPONENT_TYPES; i++)
 		{
 			if (signature[i])
 			{
 				// need to change this to properly get component size
-				m_componentColumns.emplace((ComponentType)i, Column(componentSizes[i]));
+				//m_componentColumns.emplace((ComponentType)i, Column(componentSizes[i]));
+				m_componentColumns[(ComponentType)i] = Column(componentSizes[i]);
 			}
 		}
 	}
 
 	// Method to add an entity with its component data
-	void AddEntity(Entity entity, const std::unordered_map<ComponentType, void*>& components) {
+	void AddEntity(Entity entity, const std::vector<ComponentData>& components) {
 
 		m_entityToDenseIndex[entity] = m_entityCount++;
 		m_denseIndexToEntity.push_back(entity);
 
-		for (const auto& pair : components) {
-			const auto& type = pair.first;  // Component type
-			const auto& data = pair.second; // Pointer to component data
+		for (const ComponentData& component : components) {
+			assert(m_componentColumns.find(component.type) != m_componentColumns.end() && "Component type not present in this archetype!");
 
-			assert(m_componentColumns.find(type) != m_componentColumns.end() && "Component type not present in this archetype!");
-
-			m_componentColumns[type].AddComponent(data);
+			m_componentColumns[component.type].AddComponent(component.data);
 		}
 	}
 
-	std::unordered_map<ComponentType, void*> GetComponentData(Entity entity)
+	std::vector<ComponentData> GetComponentData(Entity entity)
 	{
-		std::unordered_map<ComponentType, void*> componentData;
+		std::vector<ComponentData> componentData;
 
 		for (auto& pair : m_componentColumns) {
-			m_componentColumns.emplace(pair.first, pair.second.GetComponent(entity));
+			const ComponentData data = { pair.first, pair.second.GetComponent(entity) };
+			componentData.push_back(data);
 		}
+
+		return componentData;
 	}
 
 	void RemoveEntity(Entity entity)

@@ -7,6 +7,7 @@
 #include <memory>
 #include <typeindex>
 #include <unordered_map>
+#include <array>
 
 class ComponentManager
 {
@@ -30,7 +31,7 @@ public:
 	template <typename T>
 	ComponentType GetComponentType()
 	{
-		return GetTypeIndex<T>();
+		return (ComponentType)GetTypeIndex<T>();
 
 		//assert(m_componentTypes.find(typeHash) != m_componentTypes.end() && "Component not registered before use.");
 
@@ -42,17 +43,9 @@ public:
 	{
 		Signature oldSignature = signature;
 
-		// check if the entity has had a component before
-		//if (signature.any())
-		//{
-		//	// get its previous archetype so data can be moved over
-		//	std::shared_ptr<Archetype> oldArchetype = m_archetypes[signature];
-
-		//	auto oldData = oldArchetype->GetComponentData(entity);
-		//}
-
 		// update signature with new component
-		signature.set(GetTypeIndex<T>());
+		ComponentType newComponentType = GetComponentType<T>();
+		signature.set(newComponentType);
 		
 		// check if the new signatures archetype already exists
 		// TODO: this check should be done using the "Archetype Graph (3/14)" suggested in the ECS #3 article
@@ -64,8 +57,24 @@ public:
 		else
 		{
 			// create a new archetype with this signature
-			newArchetype = std::make_shared<Archetype>(signature);
+			newArchetype = std::make_shared<Archetype>(signature, m_componentSizes);
 		}
+
+		std::vector<ComponentData> componentData;
+
+		// check if the entity had a component before
+		// if they did, then their data needs to be transferred over
+		if (oldSignature.any())
+		{
+			std::shared_ptr<Archetype> oldArchetype = m_archetypes[oldSignature];
+			componentData = oldArchetype->GetComponentData(entity);
+			oldArchetype->RemoveEntity(entity);
+		}
+
+		const ComponentData newComponentData = { newComponentType, &component };
+		componentData.push_back(newComponentData);
+
+		newArchetype->AddEntity(entity, componentData);
 
 		return signature;
 	}
