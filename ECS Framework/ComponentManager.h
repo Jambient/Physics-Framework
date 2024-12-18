@@ -58,6 +58,7 @@ public:
 		{
 			// create a new archetype with this signature
 			newArchetype = std::make_shared<Archetype>(signature, m_componentSizes);
+			m_archetypes[signature] = newArchetype;
 		}
 
 		std::vector<ComponentData> componentData;
@@ -95,6 +96,20 @@ public:
 	std::vector<T>& GetAllComponents()
 	{
 		return GetComponentArray<T>()->GetAllComponents();
+	}
+
+	std::vector<std::shared_ptr<Archetype>> GetArchetypes(Signature signature)
+	{
+		std::vector<std::shared_ptr<Archetype>> archetypes;
+		for (const auto& pair : m_archetypes)
+		{
+			if ((pair.first & signature) == signature)
+			{
+				archetypes.push_back(pair.second);
+			}
+		}
+
+		return archetypes;
 	}
 
 	void EntityDestroyed(Entity entity)

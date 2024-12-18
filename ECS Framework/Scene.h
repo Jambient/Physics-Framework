@@ -3,6 +3,12 @@
 #include "EntityManager.h"
 #include "SystemManager.h"
 
+struct WorldView
+{
+	Signature signature;
+	std::vector<std::shared_ptr<Archetype>> archetypes;
+};
+
 class Scene
 {
 public:
@@ -27,6 +33,28 @@ public:
 		m_systemManager->EntityDestroyed(entity);
 	}
 
+	///////////// VIEW METHODS
+	template <typename... Components>
+	WorldView CreateWorldView()
+	{
+		WorldView worldView;
+		Signature viewSignature;
+		(SetComponentBit<Components>(viewSignature), ...);
+
+		worldView.signature = viewSignature;
+		worldView.archetypes = m_componentManager->GetArchetypes(viewSignature);
+
+		return worldView;
+	}
+
+	template<typename... Components, typename Callback>
+	void ForEach(WorldView worldView, Callback&& callback)
+	{
+		for (auto& archetype : worldView.archetypes)
+		{
+			archetype->ForEach<Components...>(worldView.signature, callback);
+		}
+	}
 
 	///////////// COMPONENT METHODS
 
@@ -90,6 +118,11 @@ public:
 	}
 
 private:
+	template <typename T>
+	void SetComponentBit(Signature& signature) {
+		signature.set(m_componentManager->GetComponentType<T>());
+	}
+
 	std::unique_ptr<ComponentManager> m_componentManager;
 	std::unique_ptr<EntityManager> m_entityManager;
 	std::unique_ptr<SystemManager> m_systemManager;

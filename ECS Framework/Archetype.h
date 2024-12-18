@@ -7,6 +7,7 @@
 #include <cstring> // For memcpy
 #include <unordered_map>
 #include <array>
+#include <tuple>
 
 struct ComponentData
 {
@@ -17,65 +18,53 @@ struct ComponentData
 // type-erased buffer for component data
 struct Column
 {
-	void* m_elements;      // buffer with component data
-	size_t m_elementSize;  // size of a single element
-	size_t m_count;        // number of elements
+	std::vector<char> m_elements; // buffer with component data
+	size_t m_elementSize; // size of a single element
 
 	Column() {};
 
-	Column(size_t elementSize)
-		: m_elements(nullptr), m_elementSize(elementSize), m_count(0) {}
-
-	~Column()
-	{
-		if (m_elements != nullptr)
-		{
-			free(m_elements);
-		}
-	}
+	Column(size_t elementSize) : m_elementSize(elementSize) {}
 
 	void AddComponent(const void* data)
 	{
-		++m_count;
+		assert(data != nullptr && "Component data cannot be null!");
 
-		m_elements = realloc(m_elements, m_count * m_elementSize);
-		assert(m_elements && "Memory allocation failed!");
+		// cast data into array of bytes
+		const char* rawData = static_cast<const char*>(data);
 
-		// Copy the new element into the buffer
-		memcpy(static_cast<char*>(m_elements) + (m_count - 1) * m_elementSize, data, m_elementSize);
+		// insert it into the buffer
+		m_elements.insert(m_elements.end(), rawData, rawData + m_elementSize);
 	}
 
 	void RemoveComponent(size_t index)
 	{
-		assert(index < m_count && "Index out of bounds!");
+		assert(index < GetCount() && "Index out of bounds!");
 
-		// Copy the last element into the specified index
-		void* lastElement = static_cast<char*>(m_elements) + (m_count - 1) * m_elementSize;
-		void* targetElement = static_cast<char*>(m_elements) + index * m_elementSize;
-		memcpy(targetElement, lastElement, m_elementSize);
+		// Get iterators to the element to remove
+		auto startIt = m_elements.begin() + index * m_elementSize;
+		auto endIt = startIt + m_elementSize;
 
-		// Decrease the count
-		--m_count;
-
-		// Reallocate the buffer to shrink it
-		if (m_count > 0)
+		// Replace the removed element with the last element in the vector
+		if (index != GetCount() - 1)
 		{
-			m_elements = realloc(m_elements, m_count * m_elementSize);
-			assert(m_elements && "Memory allocation failed!");
+			auto lastElementStart = m_elements.end() - m_elementSize;
+			std::copy(lastElementStart, m_elements.end(), startIt);
 		}
-		else
-		{
-			// Free the buffer if no elements remain
-			free(m_elements);
-			m_elements = nullptr;
-		}
+
+		// Erase the last element
+		m_elements.erase(m_elements.end() - m_elementSize, m_elements.end());
 	}
 
 	void* GetComponent(size_t index) const
 	{
-		assert(index < m_count && "Index out of bounds!");
+		assert(index < GetCount() && "Index out of bounds!");
 
-		return static_cast<char*>(m_elements) + index * m_elementSize;
+		return const_cast<char*>(m_elements.data() + index * m_elementSize);
+	}
+
+	size_t GetCount() const
+	{
+		return m_elements.size() / m_elementSize;
 	}
 };
 
@@ -97,6 +86,30 @@ public:
 			}
 		}
 	}
+
+	template<typename... Components, typename Callback>
+	void ForEach(Signature signature, Callback&& callback)
+	{
+		// Filter the component columns to process only those specified by the signature
+		std::vector<std::pair<ComponentType, Column*>> activeColumns;
+
+		for (auto& [componentType, column] : m_componentColumns) {
+			if (signature[componentType]) {
+				activeColumns.emplace_back(componentType, &column);
+			}
+		}
+
+		// Prepare a tuple of pointers for each entity
+		for (size_t i = 0; i < m_entityCount; ++i) {
+			// Create a tuple of pointers for the current entity's components
+			auto componentPointers = std::make_tuple(static_cast<Components*>(activeColumns[0].second->GetComponent(i))...);
+
+			// Use std::apply to call the callback with unpacked components
+			std::apply(callback, componentPointers);
+		}
+	}
+
+	Signature GetSignature() const { return m_signature; }
 
 	// Method to add an entity with its component data
 	void AddEntity(Entity entity, const std::vector<ComponentData>& components) {
@@ -148,6 +161,7 @@ public:
 	}
 
 private:
+
 	Signature m_signature;
 	Entity m_entityCount;
 	std::unordered_map<ComponentType, Column> m_componentColumns;

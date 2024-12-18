@@ -115,7 +115,13 @@ HRESULT DX11App::Init()
 
     Entity e1 = m_scene.CreateEntity();
     m_scene.AddComponent(e1, Gravity{ Vector3::Zero });
-    m_scene.AddComponent(e1, RigidBody{ Vector3::Zero, Vector3::Zero });
+    m_scene.AddComponent(e1, RigidBody{ Vector3::One, Vector3::Left });
+
+    WorldView testView = m_scene.CreateWorldView<RigidBody>();
+
+    m_scene.ForEach<RigidBody>(testView, [](RigidBody* rb) {
+        std::cout << "Found rigidbody for entity";
+        });
 
     /*Signature objectSignature;
     objectSignature.set(m_scene.GetComponentType<Gravity>());
