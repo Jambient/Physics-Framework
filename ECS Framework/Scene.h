@@ -39,13 +39,10 @@ public:
 	template <typename T>
 	void AddComponent(Entity entity, T component)
 	{
-		m_componentManager->AddComponent<T>(entity, component);
+		Signature newSignature = m_componentManager->AddComponent<T>(entity, m_entityManager->GetSignature(entity), component);
+		m_entityManager->SetSignature(entity, newSignature);
 
-		Signature signature = m_entityManager->GetSignature(entity);
-		signature.set(m_componentManager->GetComponentType<T>());
-		m_entityManager->SetSignature(entity, signature);
-
-		m_systemManager->EntitySignatureChanged(entity, signature);
+		m_systemManager->EntitySignatureChanged(entity, newSignature);
 	}
 
 	template <typename T>
