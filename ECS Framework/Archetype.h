@@ -8,6 +8,9 @@
 #include <unordered_map>
 #include <array>
 #include <tuple>
+#include "ComponentManager.h"
+
+class ComponentManager;
 
 struct ComponentData
 {
@@ -21,7 +24,7 @@ struct Column
 	std::vector<char> m_elements; // buffer with component data
 	size_t m_elementSize; // size of a single element
 
-	Column() {};
+	Column() : m_elementSize(0) {};
 
 	Column(size_t elementSize) : m_elementSize(elementSize) {}
 
@@ -68,6 +71,16 @@ struct Column
 	}
 };
 
+template <typename...Ts>
+struct foo {
+	static const size_t N = sizeof...(Ts);
+	template <size_t ... I>
+	static auto helper(std::integer_sequence<size_t, I...>) {
+		return std::tuple<std::array<Ts, I>...>{};
+	}
+	using type = decltype(helper(std::make_integer_sequence<size_t, N>{}));
+};
+
 class Archetype
 {
 public:
@@ -88,23 +101,24 @@ public:
 	}
 
 	template<typename... Components, typename Callback>
-	void ForEach(Signature signature, Callback&& callback)
+	void ForEach(Signature signature, Callback&& callback, std::shared_ptr<ComponentManager> cm)
 	{
-		// Filter the component columns to process only those specified by the signature
-		std::vector<std::pair<ComponentType, Column*>> activeColumns;
+		// get the columns mentioned in the signature
+		std::unordered_map<ComponentType, Column*> activeColumns;
 
 		for (auto& [componentType, column] : m_componentColumns) {
 			if (signature[componentType]) {
-				activeColumns.emplace_back(componentType, &column);
+				activeColumns.emplace(componentType, &column);
 			}
 		}
 
-		// Prepare a tuple of pointers for each entity
-		for (size_t i = 0; i < m_entityCount; ++i) {
-			// Create a tuple of pointers for the current entity's components
-			auto componentPointers = std::make_tuple(static_cast<Components*>(activeColumns[0].second->GetComponent(i))...);
+		
 
-			// Use std::apply to call the callback with unpacked components
+		// get component pointers for the current entity
+		for (size_t i = 0; i < m_entityCount; i++) {
+			auto componentPointers = std::make_tuple(static_cast<Components*>(activeColumns[0]->GetComponent(i))...);
+
+			// use std::apply to call the callback with unpacked components
 			std::apply(callback, componentPointers);
 		}
 	}

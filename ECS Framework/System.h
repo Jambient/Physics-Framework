@@ -8,5 +8,5 @@ class System
 {
 public:
 	std::set<Entity> m_entities;
-	Scene* m_scene;
+	Scene* m_scene = nullptr;
 };

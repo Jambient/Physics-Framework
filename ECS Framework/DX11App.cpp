@@ -114,14 +114,14 @@ HRESULT DX11App::Init()
     m_physicsSystem->m_scene = &m_scene;
 
     Entity e1 = m_scene.CreateEntity();
-    m_scene.AddComponent(e1, Gravity{ Vector3::Zero });
+    m_scene.AddComponent(e1, Gravity{ Vector3::Down * 9.8 });
     m_scene.AddComponent(e1, RigidBody{ Vector3::One, Vector3::Left });
 
-    WorldView testView = m_scene.CreateWorldView<RigidBody>();
+    WorldView testView = m_scene.CreateWorldView<RigidBody, Gravity>();
 
-    m_scene.ForEach<RigidBody>(testView, [](RigidBody* rb) {
+    m_scene.ForEach<RigidBody, Gravity>(testView, [](RigidBody* rb, Gravity* grav) {
         std::cout << "Found rigidbody for entity";
-        });
+    });
 
     /*Signature objectSignature;
     objectSignature.set(m_scene.GetComponentType<Gravity>());

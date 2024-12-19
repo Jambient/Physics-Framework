@@ -14,9 +14,9 @@ class Scene
 public:
 	void Init()
 	{
-		m_componentManager = std::make_unique<ComponentManager>();
-		m_entityManager = std::make_unique<EntityManager>();
-		m_systemManager = std::make_unique<SystemManager>();
+		m_componentManager = std::make_shared<ComponentManager>();
+		m_entityManager = std::make_shared<EntityManager>();
+		m_systemManager = std::make_shared<SystemManager>();
 	}
 
 	///////////// ENTITY METHODS
@@ -52,7 +52,7 @@ public:
 	{
 		for (auto& archetype : worldView.archetypes)
 		{
-			archetype->ForEach<Components...>(worldView.signature, callback);
+			archetype->ForEach<Components...>(worldView.signature, callback, m_componentManager);
 		}
 	}
 
@@ -123,7 +123,7 @@ private:
 		signature.set(m_componentManager->GetComponentType<T>());
 	}
 
-	std::unique_ptr<ComponentManager> m_componentManager;
-	std::unique_ptr<EntityManager> m_entityManager;
-	std::unique_ptr<SystemManager> m_systemManager;
+	std::shared_ptr<ComponentManager> m_componentManager;
+	std::shared_ptr<EntityManager> m_entityManager;
+	std::shared_ptr<SystemManager> m_systemManager;
 };

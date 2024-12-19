@@ -15,6 +15,7 @@ public:
 	ComponentManager()
 	{
 		m_componentSets.resize(MAX_COMPONENT_TYPES);
+		m_componentSizes = { 0 };
 	}
 
 	template <typename T>
@@ -132,7 +133,7 @@ private:
 	template <typename T>
 	SparseSet<T>* GetComponentArray()
 	{
-		std::size_t typeIndex = GetTypeIndex<T>();
+		size_t typeIndex = GetTypeIndex<T>();
 
 		//assert(m_componentTypes.find(typeHash) != m_componentTypes.end() && "Component not registered before use.");
 
@@ -140,9 +141,9 @@ private:
 	}
 
 	template <typename T>
-	std::size_t GetTypeIndex()
+	size_t GetTypeIndex()
 	{
-		static const std::size_t typeIndex = m_nextComponentType++;
+		static const size_t typeIndex = m_nextComponentType++;
 		return typeIndex;
 	}
 };

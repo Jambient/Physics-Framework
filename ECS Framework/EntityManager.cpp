@@ -3,6 +3,8 @@
 
 EntityManager::EntityManager()
 {
+	m_livingEntityCount = 0;
+
 	for (Entity entity = 0; entity < MAX_ENTITIES; ++entity)
 	{
 		m_availableEntities.push(entity);
