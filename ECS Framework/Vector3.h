@@ -77,6 +77,13 @@ public:
 		z *= other.z;
 	}
 
+	void operator*=(float scalar)
+	{
+		x *= scalar;
+		y *= scalar;
+		z *= scalar;
+	}
+
 	bool operator==(const Vector3& other) const
 	{
 		return x == other.x && y == other.y && z == other.z;

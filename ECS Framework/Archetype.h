@@ -71,7 +71,7 @@ struct Column
 		assert(index < GetCount() && "Index out of bounds!");
 
 		char* data = m_elements.data() + index * m_elementSize;
-		return (T*)data; //*reinterpret_cast<T*>(data);
+		return (T*)data;
 	}
 
 	size_t GetCount() const

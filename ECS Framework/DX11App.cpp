@@ -106,6 +106,7 @@ HRESULT DX11App::Init()
     // initialise and build the scene
     m_scene.Init();
 
+    m_scene.RegisterComponent<Particle>();
     m_scene.RegisterComponent<Gravity>();
     m_scene.RegisterComponent<RigidBody>();
     m_scene.RegisterComponent<Transform>();
@@ -135,8 +136,14 @@ HRESULT DX11App::Init()
     for (Entity entity : entities)
     {
         entity = m_scene.CreateEntity();
+        Vector3 objectPosition = Vector3(randPosition(generator), randPosition(generator), randPosition(generator));
 
         m_scene.AddComponent(
+            entity,
+            Particle{ objectPosition, Vector3::Zero, Vector3::Down * 9.8f, 0.99f, 1 / 2.0f }
+        );
+
+        /*m_scene.AddComponent(
             entity, 
             Gravity{ Vector3(0.0f, randGravity(generator), 0.0f) });
 
@@ -150,7 +157,7 @@ HRESULT DX11App::Init()
 
         m_scene.AddComponent(
             entity,
-            Transform{ objectPosition, objectRotation, objectScale });
+            Transform{ objectPosition, objectRotation, objectScale });*/
     }
 
     m_physicsSystem->Init();
@@ -256,10 +263,15 @@ void DX11App::Update()
     }
 
     // update instance data
-    m_scene.ForEach<Transform>([&](Entity entity, Transform* transform) {
+    /*m_scene.ForEach<Transform>([&](Entity entity, Transform* transform) {
         m_instanceData[entity].Position = transform->Position;
         m_instanceData[entity].Scale = transform->Scale;
-    });
+    });*/
+
+    m_scene.ForEach<Particle>([&](Entity entity, Particle* particle) {
+        m_instanceData[entity].Position = particle->Position;
+        m_instanceData[entity].Scale = Vector3::One;
+        });
 
     D3D11_MAPPED_SUBRESOURCE mappedResource;
     HRESULT hr = m_immediateContext->Map(m_instanceBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
