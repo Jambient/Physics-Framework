@@ -256,14 +256,10 @@ void DX11App::Update()
     }
 
     // update instance data
-    /*const std::vector<Transform>& transforms = m_scene.GetAllComponents<Transform>();
-
-    for (Entity i = 0; i < MAX_ENTITIES; i++)
-    {
-        const Transform& transform = transforms[i];
-        m_instanceData[i].Position = transform.Position;
-        m_instanceData[i].Scale = transform.Scale;
-    }*/
+    m_scene.ForEach<Transform>([&](Entity entity, Transform* transform) {
+        m_instanceData[entity].Position = transform->Position;
+        m_instanceData[entity].Scale = transform->Scale;
+    });
 
     D3D11_MAPPED_SUBRESOURCE mappedResource;
     HRESULT hr = m_immediateContext->Map(m_instanceBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
@@ -318,7 +314,7 @@ void DX11App::Draw()
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
     // present the backbuffer to the screen
-    m_swapChain->Present(0, 0);
+    m_swapChain->Present(1, 0);
 }
 
 void DX11App::OnMouseMove(WPARAM btnState, int x, int y)

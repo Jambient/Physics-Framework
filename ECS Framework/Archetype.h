@@ -116,13 +116,13 @@ public:
 
 		constexpr size_t componentCount = sizeof...(Components);
 
-		// Create a vector of component column pointers ordered by the Components types
+		// create an array of the used component columns in this archetype
 		std::array<Column*, componentCount> orderedColumns = { (&m_componentColumns[(ComponentType)TypeIndexGenerator::GetTypeIndex<Components>()])... };
 
-		// get component pointers for the current entity
+		// for each entity gets its component data and execute the callback
 		for (size_t i = 0; i < m_entityCount; i++) {
 			int index = componentCount;
-			auto componentData = std::make_tuple((orderedColumns[--index]->GetComponentData<Components>(i))...);
+			auto componentData = std::make_tuple(m_denseIndexToEntity[i], (orderedColumns[--index]->GetComponentData<Components>(i))...);
 
 			std::apply(callback, componentData);
 		}

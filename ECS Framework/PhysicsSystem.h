@@ -12,11 +12,9 @@ public:
 
 	void Update(float dt)
 	{
-		m_scene->ForEach<Gravity, Transform, RigidBody>([dt](Gravity* gravity, Transform* transform, RigidBody* rigidbody) {
-			
+		m_scene->ForEach<Gravity, Transform, RigidBody>([dt](Entity entity, Gravity* gravity, Transform* transform, RigidBody* rigidbody) {
 			transform->Position += rigidbody->Velocity * dt;
 			rigidbody->Velocity += gravity->Force * dt;
-
 		});
 
 		//std::vector<Transform>& transformComponents = m_scene->GetAllComponents<Transform>();
