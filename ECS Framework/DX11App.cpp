@@ -113,17 +113,12 @@ HRESULT DX11App::Init()
     m_physicsSystem = m_scene.RegisterSystem<PhysicsSystem>();
     m_physicsSystem->m_scene = &m_scene;
 
-    Entity e1 = m_scene.CreateEntity();
-    m_scene.AddComponent(e1, Gravity{ Vector3::Down * 9.8 });
-    m_scene.AddComponent(e1, RigidBody{ Vector3::One, Vector3::Left });
+    /*Entity e1 = m_scene.CreateEntity();
+    m_scene.AddComponent(e1, Gravity{ Vector3::Down * 9.8f });
+    m_scene.AddComponent(e1, RigidBody{ Vector3::One, Vector3::One });
+    m_scene.AddComponent(e1, Transform{ Vector3::Left, Vector3::Zero, Vector3::Right });*/
 
-    WorldView testView = m_scene.CreateWorldView<RigidBody, Gravity>();
-
-    m_scene.ForEach<RigidBody, Gravity>(testView, [](RigidBody* rb, Gravity* grav) {
-        std::cout << "Found rigidbody for entity";
-    });
-
-    /*Signature objectSignature;
+    Signature objectSignature;
     objectSignature.set(m_scene.GetComponentType<Gravity>());
     objectSignature.set(m_scene.GetComponentType<RigidBody>());
     objectSignature.set(m_scene.GetComponentType<Transform>());
@@ -156,7 +151,9 @@ HRESULT DX11App::Init()
         m_scene.AddComponent(
             entity,
             Transform{ objectPosition, objectRotation, objectScale });
-    }*/
+    }
+
+    m_physicsSystem->Init();
 
     m_instanceData.resize(MAX_ENTITIES);
 
@@ -253,7 +250,7 @@ void DX11App::Update()
 
     while (m_physicsAccumulator >= FPS60)
     {
-        //m_physicsSystem->Update(FPS60);
+        m_physicsSystem->Update(FPS60);
         m_physicsAccumulator -= FPS60;
         // also need to have individual elapsed time for system
     }
@@ -321,7 +318,7 @@ void DX11App::Draw()
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
     // present the backbuffer to the screen
-    m_swapChain->Present(1, 0);
+    m_swapChain->Present(0, 0);
 }
 
 void DX11App::OnMouseMove(WPARAM btnState, int x, int y)

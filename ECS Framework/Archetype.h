@@ -8,9 +8,9 @@
 #include <unordered_map>
 #include <array>
 #include <tuple>
-#include "ComponentManager.h"
-
-class ComponentManager;
+#include "TypeIDGenerator.h"
+#include <iostream>
+#include <utility>
 
 struct ComponentData
 {
@@ -65,6 +65,15 @@ struct Column
 		return const_cast<char*>(m_elements.data() + index * m_elementSize);
 	}
 
+	template<typename T>
+	T* GetComponentData(size_t index)
+	{
+		assert(index < GetCount() && "Index out of bounds!");
+
+		char* data = m_elements.data() + index * m_elementSize;
+		return (T*)data; //*reinterpret_cast<T*>(data);
+	}
+
 	size_t GetCount() const
 	{
 		return m_elements.size() / m_elementSize;
@@ -101,25 +110,21 @@ public:
 	}
 
 	template<typename... Components, typename Callback>
-	void ForEach(Signature signature, Callback&& callback, std::shared_ptr<ComponentManager> cm)
+	void ForEach(Callback&& callback)
 	{
-		// get the columns mentioned in the signature
-		std::unordered_map<ComponentType, Column*> activeColumns;
+		if (m_entityCount == 0) { return; }
 
-		for (auto& [componentType, column] : m_componentColumns) {
-			if (signature[componentType]) {
-				activeColumns.emplace(componentType, &column);
-			}
-		}
+		constexpr size_t componentCount = sizeof...(Components);
 
-		
+		// Create a vector of component column pointers ordered by the Components types
+		std::array<Column*, componentCount> orderedColumns = { (&m_componentColumns[(ComponentType)TypeIndexGenerator::GetTypeIndex<Components>()])... };
 
 		// get component pointers for the current entity
 		for (size_t i = 0; i < m_entityCount; i++) {
-			auto componentPointers = std::make_tuple(static_cast<Components*>(activeColumns[0]->GetComponent(i))...);
+			int index = componentCount;
+			auto componentData = std::make_tuple((orderedColumns[--index]->GetComponentData<Components>(i))...);
 
-			// use std::apply to call the callback with unpacked components
-			std::apply(callback, componentPointers);
+			std::apply(callback, componentData);
 		}
 	}
 
@@ -172,6 +177,8 @@ public:
 		// Erase removed entity
 		m_entityToDenseIndex[entity] = UINT32_MAX;
 		m_denseIndexToEntity.pop_back();
+
+		m_entityCount--;
 	}
 
 private:

@@ -2,6 +2,7 @@
 #include "ComponentManager.h"
 #include "EntityManager.h"
 #include "SystemManager.h"
+#include <cmath>
 
 struct WorldView
 {
@@ -48,11 +49,13 @@ public:
 	}
 
 	template<typename... Components, typename Callback>
-	void ForEach(WorldView worldView, Callback&& callback)
+	void ForEach(Callback&& callback)
 	{
-		for (auto& archetype : worldView.archetypes)
+		Signature signature = BuildSignature<Components...>();
+
+		for (auto& archetype : m_componentManager->GetArchetypes(signature))
 		{
-			archetype->ForEach<Components...>(worldView.signature, callback, m_componentManager);
+			archetype->ForEach<Components...>(callback);
 		}
 	}
 
@@ -118,6 +121,18 @@ public:
 	}
 
 private:
+	template <typename... Components>
+	Signature BuildSignature()
+	{
+		static const Signature signature( sum( (std::powf(2, (float)m_componentManager->GetComponentType<Components>()))... ) );
+		return signature;
+	}
+
+	template<typename... Args>
+	static int sum(Args... args) {
+		return (args + ...);
+	}
+
 	template <typename T>
 	void SetComponentBit(Signature& signature) {
 		signature.set(m_componentManager->GetComponentType<T>());

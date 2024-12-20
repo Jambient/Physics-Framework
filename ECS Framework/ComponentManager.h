@@ -2,6 +2,7 @@
 #include "SparseSet.h"
 #include "Definitions.h"
 #include "Archetype.h"
+#include "TypeIDGenerator.h"
 #include <cassert>
 #include <vector>
 #include <memory>
@@ -143,7 +144,6 @@ private:
 	template <typename T>
 	size_t GetTypeIndex()
 	{
-		static const size_t typeIndex = m_nextComponentType++;
-		return typeIndex;
+		return TypeIndexGenerator::GetTypeIndex<T>();
 	}
 };

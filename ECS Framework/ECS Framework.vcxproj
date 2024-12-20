@@ -156,6 +156,7 @@
     <ClInclude Include="System.h" />
     <ClInclude Include="SystemManager.h" />
     <ClInclude Include="Timer.h" />
+    <ClInclude Include="TypeIDGenerator.h" />
     <ClInclude Include="Vector3.h" />
   </ItemGroup>
   <ItemGroup>
