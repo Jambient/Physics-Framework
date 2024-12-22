@@ -12,6 +12,34 @@
 
 #define ThrowIfFailed(x)  if (FAILED(x)) { throw new std::bad_exception;}
 
+Ray DX11App::GetRayFromScreenPosition(int x, int y)
+{
+    // get inverted camera matrices
+    XMMATRIX invertedProj = XMMatrixInverse(nullptr, m_camera->GetProjection());
+    XMMATRIX invertedView = XMMatrixInverse(nullptr, m_camera->GetView());
+
+    // convert to 3d nds
+    float viewportX = (2.0f * x) / m_viewport.Width - 1.0f;
+    float viewportY = 1.0f - (2.0f * y) / m_viewport.Height;
+    XMFLOAT3 rayNDS = XMFLOAT3(viewportX, viewportY, 1.0f);
+
+    // convert to homogenous clip coordinates
+    XMVECTOR rayClip = XMVectorSet(rayNDS.x, rayNDS.y, 1.0f, 1.0f);
+
+    // convert to eye coordinates
+    XMVECTOR rayEye = XMVector4Transform(rayClip, invertedProj);
+    //rayEye = XMVectorSetZ(rayEye, -1.0f);
+    rayEye = XMVectorSetW(rayEye, 0.0f);
+
+    // convert to world coordinates
+    XMFLOAT3 rayDirection;
+    XMStoreFloat3(&rayDirection, XMVector3Normalize(XMVector4Transform(rayEye, invertedView)));
+
+    XMFLOAT3 cameraPosition = m_camera->GetPosition();
+    Ray ray = Ray(Vector3(cameraPosition.x, cameraPosition.y, cameraPosition.z), Vector3(rayDirection.x, rayDirection.y, rayDirection.z));
+
+    return ray;
+}
 
 DX11App::~DX11App()
 {
@@ -35,6 +63,14 @@ HRESULT DX11App::Init()
     hr = m_device->CreateRasterizerState(&rasterizerDesc, &m_defaultRasterizerState);
     if (FAILED(hr)) return hr;
 
+    // create the wireframe rasterizer state
+    D3D11_RASTERIZER_DESC wireFrameRasterizerDesc = {};
+    wireFrameRasterizerDesc.FillMode = D3D11_FILL_WIREFRAME;
+    wireFrameRasterizerDesc.CullMode = D3D11_CULL_NONE;
+
+    hr = m_device->CreateRasterizerState(&wireFrameRasterizerDesc, &m_wireframeRasterizerState);
+    if (FAILED(hr)) return hr;
+
     // create the default sampler state
     D3D11_SAMPLER_DESC bilinearSamplerDesc = {};
     bilinearSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_MIRROR;
@@ -49,6 +85,14 @@ HRESULT DX11App::Init()
 
     // create the layout for the default input used in most shaders
     D3D11_INPUT_ELEMENT_DESC defaultInputLayout[] =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "TANGENT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+    };
+
+    D3D11_INPUT_ELEMENT_DESC instancedInputLayout[] =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
         { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -77,12 +121,22 @@ HRESULT DX11App::Init()
     if (FAILED(hr)) { return hr; }
     hr = sm->LoadPixelShader(m_windowHandle, "SimpleShaders", L"SimpleShaders.hlsl");
     if (FAILED(hr)) { return hr; }
-    hr = sm->CreateInputLayout("SimpleShaders", defaultInputLayout, ARRAYSIZE(defaultInputLayout));
+    hr = sm->CreateInputLayout("SimpleShaders", instancedInputLayout, ARRAYSIZE(instancedInputLayout));
     if (FAILED(hr)) { return hr; }
 
     sm->RegisterConstantBuffer("SimpleShaders", "TransformBuffer", 0);
     sm->RegisterConstantBuffer("SimpleShaders", "GlobalBuffer", 1);
     sm->RegisterConstantBuffer("SimpleShaders", "LightBuffer", 2);
+
+    // debug shader:
+    hr = sm->LoadVertexShader(m_windowHandle, "DebugBoxShaders", L"DebugBoxShaders.hlsl");
+    if (FAILED(hr)) { return hr; }
+    hr = sm->LoadPixelShader(m_windowHandle, "DebugBoxShaders", L"DebugBoxShaders.hlsl");
+    if (FAILED(hr)) { return hr; }
+    hr = sm->CreateInputLayout("DebugBoxShaders", defaultInputLayout, ARRAYSIZE(defaultInputLayout));
+    if (FAILED(hr)) { return hr; }
+
+    sm->RegisterConstantBuffer("DebugBoxShaders", "TransformBuffer", 0);
 
     // store the default ambient light into the global buffer
     m_globalBufferData.AmbientLight = XMFLOAT4(0.05f, 0.05f, 0.05f, 1.0f);
@@ -127,21 +181,59 @@ HRESULT DX11App::Init()
 
     std::vector<Entity> entities(MAX_ENTITIES);
 
+    /*std::default_random_engine generator;
+    std::uniform_real_distribution<float> velocityAxisOffset(-1.0f, 1.0f);
+
+    for (Entity entity : entities)
+    {
+        entity = m_scene.CreateEntity();
+
+        Vector3 velocity = Vector3(velocityAxisOffset(generator), 5.0f, velocityAxisOffset(generator)).normalized() * 5.0f;
+
+        m_scene.AddComponent(
+            entity,
+            Particle{ Vector3::Zero, velocity, Vector3::Down * 9.8f, 0.99f, 1 / 2.0f }
+        );
+    }*/
+
     std::default_random_engine generator;
-    std::uniform_real_distribution<float> randPosition(-500.0f, 500.0f);
+    std::uniform_real_distribution<float> randPosition(-30.0f, 30.0f);
     std::uniform_real_distribution<float> randRotation(0.0f, 3.0f);
     std::uniform_real_distribution<float> randScale(3.0f, 5.0f);
     std::uniform_real_distribution<float> randGravity(-10.0f, -1.0f);
+    std::uniform_real_distribution<float> randVelocity(-0.5f, 0.5f);
+
+   /* Entity e1 = m_scene.CreateEntity();
+    m_scene.AddComponent(
+        e1,
+        Particle{ Vector3::Left * 2.0f, Vector3::Zero, Vector3::Down, 0.99f, 1 / 2.0f}
+    );
+
+    Entity e2 = m_scene.CreateEntity();
+    m_scene.AddComponent(
+        e2,
+        Particle{ Vector3::Right * 2.0f, Vector3::Zero, Vector3::Down, 0.99f, 1 / 2.0f }
+    );
+
+    m_aabbTree.InsertLeaf(e1, AABB(Vector3::Left * 2.0f, Vector3::One));
+    m_aabbTree.InsertLeaf(e2, AABB(Vector3::Right * 2.0f, Vector3::One));
+
+    m_aabbTree.PrintTree(m_aabbTree.GetRootIndex());*/
 
     for (Entity entity : entities)
     {
         entity = m_scene.CreateEntity();
         Vector3 objectPosition = Vector3(randPosition(generator), randPosition(generator), randPosition(generator));
+        Vector3 objectVelocity = Vector3(randVelocity(generator), randVelocity(generator), randVelocity(generator));
 
         m_scene.AddComponent(
             entity,
-            Particle{ objectPosition, Vector3::Zero, Vector3::Down * 9.8f, 0.99f, 1 / 2.0f }
+            Particle{ objectPosition, Vector3::Zero, Vector3::Zero, 0.99f, 1 / 2.0f}
         );
+
+        m_aabbTree.InsertLeaf(entity, AABB(objectPosition, Vector3::One));
+
+        //std::cout << "Adding entity " << entity << " to AABB tree" << std::endl;
 
         /*m_scene.AddComponent(
             entity, 
@@ -160,8 +252,7 @@ HRESULT DX11App::Init()
             Transform{ objectPosition, objectRotation, objectScale });*/
     }
 
-    m_physicsSystem->Init();
-
+    //m_aabbTree.PrintTree(m_aabbTree.GetRootIndex());
     m_instanceData.resize(MAX_ENTITIES);
 
     // create instance buffer
@@ -259,6 +350,8 @@ void DX11App::Update()
     {
         m_physicsSystem->Update(FPS60);
         m_physicsAccumulator -= FPS60;
+
+        
         // also need to have individual elapsed time for system
     }
 
@@ -271,7 +364,9 @@ void DX11App::Update()
     m_scene.ForEach<Particle>([&](Entity entity, Particle* particle) {
         m_instanceData[entity].Position = particle->Position;
         m_instanceData[entity].Scale = Vector3::One;
-        });
+
+        m_aabbTree.Update(entity, AABB(particle->Position, Vector3::One));
+    });
 
     D3D11_MAPPED_SUBRESOURCE mappedResource;
     HRESULT hr = m_immediateContext->Map(m_instanceBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
@@ -309,7 +404,7 @@ void DX11App::Draw()
     // set the bilienar sampler state as the default sampler for shaders
     m_immediateContext->PSSetSamplers(0, 1, &m_defaultSamplerState);
 
-    ShaderManager::GetInstance()->SetActiveShader("SimpleShaders");
+    sm->SetActiveShader("SimpleShaders");
 
     // draw cube
     UINT strides[] = { m_cubeMeshData.VBStride, sizeof(InstanceData) };
@@ -320,6 +415,34 @@ void DX11App::Draw()
     m_immediateContext->IASetIndexBuffer(m_cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
     m_immediateContext->DrawInstanced(m_cubeMeshData.VerticesCount, MAX_ENTITIES, 0, 0);
+
+    sm->SetActiveShader("DebugBoxShaders");
+    m_immediateContext->RSSetState(m_wireframeRasterizerState);
+
+    TransformBuffer transformData;
+    sm->GetConstantBufferData<TransformBuffer>("TransformBuffer", transformData);
+
+    for (const Node& node : m_aabbTree.GetNodes())
+    {
+        if (true)// m_aabbTree.GetNode(node.child1).isLeaf || m_aabbTree.GetNode(node.child2).isLeaf)
+        {
+            Vector3 boxPos = node.box.getPosition();
+            Vector3 boxSize = node.box.getSize();
+
+            XMMATRIX transform = XMMatrixScaling(boxSize.x, boxSize.y, boxSize.z) * XMMatrixTranslation(boxPos.x, boxPos.y, boxPos.z);
+
+            transformData.World = XMMatrixTranspose(transform);
+            sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
+
+            UINT stride = m_cubeMeshData.VBStride;
+            UINT offset = m_cubeMeshData.VBOffset;
+
+            m_immediateContext->IASetVertexBuffers(0, 1, &m_cubeMeshData.VertexBuffer, &stride, &offset);
+            m_immediateContext->IASetIndexBuffer(m_cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+
+            m_immediateContext->DrawIndexed(m_cubeMeshData.IndexCount, 0, 0);
+        }
+    }
 
     // draw imgui
     ImGui::Render();
@@ -349,6 +472,20 @@ void DX11App::OnMouseMove(WPARAM btnState, int x, int y)
 
 void DX11App::OnMouseClick(WPARAM pressedBtn, int x, int y)
 {
+    // check if the left mouse button was the button that was clicked
+    if ((pressedBtn & MK_LBUTTON) != 0)
+    {
+        // build a ray from the current mouse position
+        Ray ray = GetRayFromScreenPosition(x, y);
+
+        float intersectDistance;
+        Entity entity = m_aabbTree.Intersect(ray, intersectDistance);
+
+        if (entity != INVALID_ENTITY)
+        {
+            std::cout << "Clicked on entity with ID " << entity << " and distance " << intersectDistance << std::endl;
+        }
+    }
 }
 
 void DX11App::OnMouseWheel(WPARAM wheelDelta, int x, int y)

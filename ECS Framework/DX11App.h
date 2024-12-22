@@ -9,6 +9,7 @@
 #include "PhysicsSystem.h"
 #include "Timer.h"
 #include "Vector3.h"
+#include "AABBTree.h"
 #include <vector>
 
 struct InstanceData
@@ -59,6 +60,7 @@ private:
 	XMINT2 m_lastMousePos;
 	Camera* m_camera;
 
+	AABBTree m_aabbTree;
 	Scene m_scene;
 	std::shared_ptr<PhysicsSystem> m_physicsSystem;
 	double m_physicsAccumulator = 0.0;
@@ -79,5 +81,15 @@ private:
 	// default rendering states
 	ID3D11RasterizerState* m_defaultRasterizerState;
 	ID3D11SamplerState* m_defaultSamplerState;
+
+	ID3D11RasterizerState* m_wireframeRasterizerState;
+
+	/**
+	 * @brief Builds a ray pointing towards the provided position on the screen from the camera's position
+	 * @param x The X offset of the position on the screen.
+	 * @param y The Y offset of the position on the screen.
+	 * @return A ray pointing towards the screen position.
+	 */
+	Ray GetRayFromScreenPosition(int x, int y);
 };
 

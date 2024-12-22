@@ -129,6 +129,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="AABB.h" />
+    <ClInclude Include="AABBTree.h" />
     <ClInclude Include="Archetype.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="ComponentManager.h" />
@@ -147,8 +149,9 @@
     <ClInclude Include="imstb_textedit.h" />
     <ClInclude Include="imstb_truetype.h" />
     <ClInclude Include="OBJLoader.h" />
-    <ClInclude Include="Octree.h" />
     <ClInclude Include="PhysicsSystem.h" />
+    <ClInclude Include="Quaternion.h" />
+    <ClInclude Include="Ray.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="ShaderManager.h" />
     <ClInclude Include="SparseSet.h" />
@@ -166,6 +169,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AABBTree.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="DX11App.cpp" />
     <ClCompile Include="DX11Framework.cpp" />
@@ -180,10 +184,16 @@
     <ClCompile Include="imgui_widgets.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="OBJLoader.cpp" />
-    <ClCompile Include="Octree.cpp" />
+    <ClCompile Include="Ray.cpp" />
     <ClCompile Include="ShaderManager.cpp" />
     <ClCompile Include="Timer.cpp" />
     <ClCompile Include="Vector3.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="DebugBoxShaders.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <FileType>Document</FileType>
+    </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -20,12 +20,12 @@ public:
 	Vector3() : x(0.0f), y(0.0f), z(0.0f) {};
 	Vector3(float x, float y, float z) : x(x), y(y), z(z) {};
 
-	float magnitude()
+	float magnitude() const
 	{
 		return sqrtf(x * x + y * y + z * z);
 	}
 
-	float sqrMagnitude()
+	float sqrMagnitude() const
 	{
 		return x * x + y * y + z * z;
 	}
@@ -35,10 +35,15 @@ public:
 		*this = normalized();
 	}
 
-	Vector3 normalized()
+	Vector3 normalized() const
 	{
 		float mag = magnitude();
 		return mag > 0.0f ? *this * (1.0f / mag) : Vector3::Zero;
+	}
+
+	Vector3 reciprocal() const
+	{
+		return Vector3(1 / x, 1 / y, 1 / z);
 	}
 
 	Vector3 operator+(const Vector3& other) const
@@ -94,41 +99,49 @@ public:
 		return !(*this == other);
 	}
 
-	void operator-()
+	bool operator<(const Vector3& other) const
 	{
-		x = -x;
-		y = -y;
-		z = -z;
+		return x < other.x && y < other.y && z < other.z;
 	}
 
-	static float Angle(Vector3& a, Vector3& b)
+	bool operator>(const Vector3& other) const
+	{
+		return x > other.x && y > other.y && z > other.z;
+	}
+
+	Vector3 operator-() const
+	{
+		return Vector3(-x, -y, -z);
+	}
+
+	static float Angle(const Vector3& a, const Vector3& b)
 	{
 		return acosf(Dot(a, b) / (a.magnitude() * b.magnitude()));
 	}
 
-	static Vector3 Cross(Vector3& a, Vector3& b)
+	static Vector3 Cross(const Vector3& a, const Vector3& b)
 	{
 		return Vector3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
 	}
 
-	static float Distance(Vector3& a, Vector3& b)
+	static float Distance(const Vector3& a, const Vector3& b)
 	{
 		return (b - a).magnitude();
 	}
 
-	static float Dot(Vector3& a, Vector3& b)
+	static float Dot(const Vector3& a, const Vector3& b)
 	{
 		return a.x * b.x + a.y * b.y + a.z * b.z;
 	}
 
-	static Vector3 Lerp(Vector3& a, Vector3& b, float t)
+	static Vector3 Lerp(const Vector3& a, const Vector3& b, float t)
 	{
 		// lerping is done like this rather than the standard a + (b - a) * t
-		// because it said this is more reliable for the bounds t = 0 and t = 1.
+		// because this is supposedly more reliable for the bounds t = 0 and t = 1.
 		return a * (1 - t) + b * t;
 	}
 
-	static Vector3 Scale(Vector3& a, Vector3& b)
+	static Vector3 Scale(const Vector3& a, const Vector3& b)
 	{
 		return Vector3(a.x * b.x, a.y * b.y, a.z * b.z);
 	}

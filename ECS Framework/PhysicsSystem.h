@@ -5,11 +5,6 @@
 class PhysicsSystem : public System
 {
 public:
-	void Init()
-	{
-
-	}
-
 	void Update(float dt)
 	{
 		//m_scene->ForEach<Gravity, Transform, RigidBody>([dt](Entity entity, Gravity* gravity, Transform* transform, RigidBody* rigidbody) {

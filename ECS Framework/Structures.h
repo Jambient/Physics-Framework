@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include "Definitions.h"
+#include "Vector3.h"
 
 using namespace DirectX;
 
@@ -15,39 +16,6 @@ enum class DrawPass
 	OPAQUE_PASS,
 	SKYBOX_PASS,
 	TRANSLUCENT_PASS
-};
-
-struct AABB
-{
-	XMFLOAT3 Center;
-	XMFLOAT3 HalfSize;
-
-	bool Contains(const XMFLOAT3& point) const 
-	{
-		return std::abs(point.x - Center.x) <= HalfSize.x &&
-			std::abs(point.y - Center.y) <= HalfSize.y &&
-			std::abs(point.z - Center.z) <= HalfSize.z;
-	}
-
-	bool Intersects(const AABB& other) const 
-	{
-		return std::abs(Center.x - other.Center.x) <= (HalfSize.x + other.HalfSize.x) &&
-			std::abs(Center.y - other.Center.y) <= (HalfSize.y + other.HalfSize.y) &&
-			std::abs(Center.z - other.Center.z) <= (HalfSize.z + other.HalfSize.z);
-	}
-};
-
-struct OctreeNode
-{
-	AABB Bounds;
-	std::vector<Entity> Entities;
-	std::unique_ptr<OctreeNode> Children[8];
-	int Depth = 0;
-
-	bool IsLeaf() const 
-	{
-		return Children[0] == nullptr;
-	}
 };
 
 struct SimpleVertex
