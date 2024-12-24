@@ -1,15 +1,12 @@
 #pragma once
+#define NOMINMAX
 #include "Vector3.h"
 
 struct AABB
 {
 	AABB() : lowerBound(Vector3::Zero), upperBound(Vector3::Zero) {};
-	AABB(const Vector3& position, const Vector3& size)
-	{
-		Vector3 halfExtents = size * 0.5f;
-		lowerBound = position - halfExtents;
-		upperBound = position + halfExtents;
-	};
+	AABB(const Vector3& lowerBound, const Vector3& upperBound)
+		: lowerBound(lowerBound), upperBound(upperBound) {};
 
 	Vector3 lowerBound;
 	Vector3 upperBound;
@@ -33,28 +30,17 @@ struct AABB
 	AABB enlarged(float factor) const
 	{
 		Vector3 margin = (upperBound - lowerBound) * factor;
-		AABB enlarged;
-		enlarged.lowerBound = lowerBound - margin;
-		enlarged.upperBound = upperBound + margin;
+		return { lowerBound - margin, upperBound + margin };
+	}
 
-		return enlarged;
+	static AABB FromPositionScale(const Vector3& position, const Vector3& size)
+	{
+		Vector3 halfExtents = size * 0.5f;
+		return { position - halfExtents, position + halfExtents };
 	}
 
 	static AABB Union(const AABB& a, const AABB& b)
 	{
-		AABB unioned;
-		unioned.lowerBound = Vector3{
-			a.lowerBound.x < b.lowerBound.x ? a.lowerBound.x : b.lowerBound.x,
-			a.lowerBound.y < b.lowerBound.y ? a.lowerBound.y : b.lowerBound.y,
-			a.lowerBound.z < b.lowerBound.z ? a.lowerBound.z : b.lowerBound.z
-		};
-		unioned.upperBound = Vector3{
-			a.upperBound.x > b.upperBound.x ? a.upperBound.x : b.upperBound.x,
-			a.upperBound.y > b.upperBound.y ? a.upperBound.y : b.upperBound.y,
-			a.upperBound.z > b.upperBound.z ? a.upperBound.z : b.upperBound.z
-		};
-
-		return unioned;
+		return { Vector3::Min(a.lowerBound, b.lowerBound), Vector3::Max(a.upperBound, b.upperBound) };
 	}
 };
-

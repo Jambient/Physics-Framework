@@ -24,16 +24,9 @@ AABBTree::AABBTree()
 	m_nodeToDenseIndex.resize(maxNodes, NULL_INDEX);
 }
 
-Node AABBTree::GetNode(int nodeIndex) const
+Node& AABBTree::GetNode(int nodeIndex)
 {
-	if (nodeIndex == NULL_INDEX)
-	{
-		return Node();
-	}
-	else
-	{
-		return m_nodes[m_nodeToDenseIndex[nodeIndex]];
-	}
+	return m_nodes[m_nodeToDenseIndex[nodeIndex]];
 }
 
 void AABBTree::InsertLeaf(Entity entity, AABB box)
@@ -51,20 +44,20 @@ void AABBTree::InsertLeaf(Entity entity, AABB box)
 	int bestSibling = PickBest(box);
 
 	// stage 2: create a new parent
-	int oldParent = m_nodes[bestSibling].parentIndex;
+	int oldParent = GetNode(bestSibling).parentIndex;
 	int newParent = AllocateInternalNode();
-	m_nodes[newParent].parentIndex = oldParent;
-	m_nodes[newParent].box = AABB::Union(box, m_nodes[bestSibling].box);
+	GetNode(newParent).parentIndex = oldParent;
+	GetNode(newParent).box = AABB::Union(box, GetNode(bestSibling).box);
 
 	if (oldParent != NULL_INDEX)
 	{
-		if (m_nodes[oldParent].child1 == bestSibling)
+		if (GetNode(oldParent).child1 == bestSibling)
 		{
-			m_nodes[oldParent].child1 = newParent;
+			GetNode(oldParent).child1 = newParent;
 		}
 		else
 		{
-			m_nodes[oldParent].child2 = newParent;
+			GetNode(oldParent).child2 = newParent;
 		}
 	}
 	else
@@ -73,10 +66,10 @@ void AABBTree::InsertLeaf(Entity entity, AABB box)
 		m_rootIndex = newParent;
 	}
 
-	m_nodes[newParent].child1 = bestSibling;
-	m_nodes[newParent].child2 = leafIndex;
-	m_nodes[bestSibling].parentIndex = newParent;
-	m_nodes[leafIndex].parentIndex = newParent;
+	GetNode(newParent).child1 = bestSibling;
+	GetNode(newParent).child2 = leafIndex;
+	GetNode(bestSibling).parentIndex = newParent;
+	GetNode(leafIndex).parentIndex = newParent;
 
 	// stage 3: walk back up the tree refitting AABBs
 	RefitFromNode(newParent, true);
@@ -84,36 +77,49 @@ void AABBTree::InsertLeaf(Entity entity, AABB box)
 
 void AABBTree::RemoveLeaf(int leafIndex)
 {
-	Entity entity = m_nodes[leafIndex].entity;
+	if (m_nodeToDenseIndex[leafIndex] == NULL_INDEX)
+	{
+		return;
+	}
 
+	Entity entity = GetNode(leafIndex).entity;
 	m_entityToNodeIndex[entity] = NULL_INDEX;
 
 	if (leafIndex == m_rootIndex)
 	{
+		// If the leaf is the root, just clear the root
 		m_rootIndex = NULL_INDEX;
+		DeallocateNode(leafIndex);
 		return;
 	}
 
-	int parentIndex = m_nodes[leafIndex].parentIndex;
-	int grandParentIndex = m_nodes[parentIndex].parentIndex;
-	int siblingIndex = m_nodes[parentIndex].child1 == leafIndex ? m_nodes[parentIndex].child2 : m_nodes[parentIndex].child1;
+	int parentIndex = GetNode(leafIndex).parentIndex;
+	int grandParentIndex = GetNode(parentIndex).parentIndex;
+	int siblingIndex = GetNode(parentIndex).child1 == leafIndex ? GetNode(parentIndex).child2 : GetNode(parentIndex).child1;
 
 	if (grandParentIndex != NULL_INDEX)
 	{
-		if (m_nodes[grandParentIndex].child1 == parentIndex)
-			m_nodes[grandParentIndex].child1 = siblingIndex;
+		// Update the grandparent to point to the sibling
+		if (GetNode(grandParentIndex).child1 == parentIndex)
+			GetNode(grandParentIndex).child1 = siblingIndex;
 		else
-			m_nodes[grandParentIndex].child2 = siblingIndex;
+			GetNode(grandParentIndex).child2 = siblingIndex;
 
-		m_nodes[siblingIndex].parentIndex = grandParentIndex;
+		GetNode(siblingIndex).parentIndex = grandParentIndex;
 
+		// Refit the tree upwards
 		RefitFromNode(grandParentIndex);
 	}
 	else
 	{
+		// If no grandparent, the sibling becomes the new root
 		m_rootIndex = siblingIndex;
-		m_nodes[siblingIndex].parentIndex = NULL_INDEX;
+		GetNode(siblingIndex).parentIndex = NULL_INDEX;
 	}
+
+	// Deallocate the parent node and the leaf node
+	DeallocateNode(parentIndex);
+	DeallocateNode(leafIndex);
 }
 
 void AABBTree::Update(Entity entity, const AABB& newBox)
@@ -123,7 +129,7 @@ void AABBTree::Update(Entity entity, const AABB& newBox)
 	// check if the entity actually exists in the tree
 	if (leafIndex == NULL_INDEX) { return; }
 
-	m_nodes[leafIndex].box = newBox;
+	GetNode(leafIndex).box = newBox;
 
 	// check if the leaf node actually needs updating
 	if (!NeedsUpdate(leafIndex)) { return; }
@@ -230,6 +236,31 @@ void AABBTree::PrintTree(int index, int depth)
 	}
 }
 
+int AABBTree::GetDeepestLevel() const
+{
+	if (m_rootIndex == NULL_INDEX) {
+		return 0; // Empty tree
+	}
+
+	// Helper function for recursive depth traversal
+	std::function<int(int)> CalculateDepth = [&](int nodeIndex) -> int {
+		if (nodeIndex == NULL_INDEX) {
+			return 0;
+		}
+
+		Node node = m_nodes[m_nodeToDenseIndex[nodeIndex]];
+
+		// Recursively calculate depth of child nodes
+		int leftDepth = CalculateDepth(node.child1);
+		int rightDepth = CalculateDepth(node.child2);
+
+		// Return the greater depth + 1 (current level)
+		return 1 + std::max(leftDepth, rightDepth);
+		};
+
+	return CalculateDepth(m_rootIndex);
+}
+
 int AABBTree::AllocateLeafNode(Entity entity, const AABB& box)
 {
 	Node leafNode;
@@ -242,7 +273,9 @@ int AABBTree::AllocateLeafNode(Entity entity, const AABB& box)
 	int nodeIndex = m_availableNodes.front();
 	m_availableNodes.pop();
 
-	m_nodeToDenseIndex[nodeIndex] = m_nodes.size() - 1;
+	m_nodeToDenseIndex[nodeIndex] = m_nodeCount;
+	m_denseToNodeIndex.push_back(nodeIndex);
+	m_nodeCount++;
 
 	return nodeIndex;
 }
@@ -251,16 +284,48 @@ int AABBTree::AllocateInternalNode()
 {
 	Node internalNode;
 	m_nodes.push_back(internalNode);
-	return m_nodes.size() - 1;
+
+	int nodeIndex = m_availableNodes.front();
+	m_availableNodes.pop();
+
+	m_nodeToDenseIndex[nodeIndex] = m_nodeCount;
+	m_denseToNodeIndex.push_back(nodeIndex);
+	m_nodeCount++;
+
+	return nodeIndex;
+}
+
+void AABBTree::DeallocateNode(int index)
+{
+	size_t removedDenseIndex = m_nodeToDenseIndex[index];
+	size_t lastDenseIndex = m_nodes.size() - 1;
+
+	if (removedDenseIndex != lastDenseIndex)
+	{
+		// Replace removed element with the last one
+		m_nodes[removedDenseIndex] = m_nodes[lastDenseIndex];
+		int lastNodeIndex = m_denseToNodeIndex[lastDenseIndex];
+
+		// Update mappings
+		m_nodeToDenseIndex[lastNodeIndex] = removedDenseIndex;
+		m_denseToNodeIndex[removedDenseIndex] = lastNodeIndex;
+	}
+
+	// Erase the last element
+	m_nodes.pop_back();
+	m_denseToNodeIndex.pop_back();
+	m_nodeToDenseIndex[index] = NULL_INDEX;
+	m_availableNodes.push(index);
+	m_nodeCount--;
 }
 
 int AABBTree::PickBest(const AABB& leafBox)
 {
 	int leafBoxArea = leafBox.area();
 	int bestSibling = m_rootIndex;
-	float bestCost = CalculateCost(m_rootIndex, leafBox);
+	float bestCost = AABB::Union(GetNode(m_rootIndex).box, leafBox).area();
 
-	std::vector<float> costCache(m_nodes.size());
+	std::vector<float> costCache(m_nodeToDenseIndex.size());
 	std::vector<QueueNode> queue;
 	queue.push_back({ m_rootIndex, bestCost });
 
@@ -279,9 +344,10 @@ int AABBTree::PickBest(const AABB& leafBox)
 			bestSibling = current.index;
 		}
 
-		int parentIndex = m_nodes[current.index].parentIndex;
+		Node& currentNode = GetNode(current.index);
+		int parentIndex = currentNode.parentIndex;
 		int parentCost = parentIndex != NULL_INDEX ? costCache[parentIndex] : 0;
-		costCache[current.index] = AABB::Union(leafBox, m_nodes[current.index].box).area() - m_nodes[current.index].box.area() + parentCost;
+		costCache[current.index] = AABB::Union(leafBox, currentNode.box).area() - currentNode.box.area() + parentCost;
 
 		// calculate the lower bound cost
 		int subTreeLowerBoundCost = leafBoxArea + costCache[current.index];
@@ -289,17 +355,19 @@ int AABBTree::PickBest(const AABB& leafBox)
 		if (subTreeLowerBoundCost < bestCost)
 		{
 			// Push child nodes with their estimated costs
-			int child1 = m_nodes[current.index].child1;
-			int child2 = m_nodes[current.index].child2;
+			int child1 = currentNode.child1;
+			int child2 = currentNode.child2;
 
 			if (child1 != NULL_INDEX)
 			{
-				float child1Cost = AABB::Union(leafBox, m_nodes[child1].box).area() + costCache[m_nodes[child1].parentIndex]; //CalculateCost(child1, leafBox);
+				Node& child1Node = GetNode(child1);
+				float child1Cost = AABB::Union(leafBox, child1Node.box).area() + costCache[child1Node.parentIndex];
 				queue.push_back({ child1, child1Cost });
 			}
 			if (child2 != NULL_INDEX)
 			{
-				float child2Cost = AABB::Union(leafBox, m_nodes[child2].box).area() + costCache[m_nodes[child2].parentIndex]; //CalculateCost(child2, leafBox);
+				Node& child2Node = GetNode(child2);
+				float child2Cost = AABB::Union(leafBox, child2Node.box).area() + costCache[child2Node.parentIndex];
 				queue.push_back({ child2, child2Cost });
 			}
 		}
@@ -308,44 +376,30 @@ int AABBTree::PickBest(const AABB& leafBox)
 	return bestSibling;
 }
 
-float AABBTree::CalculateCost(int index, const AABB& leafBox) const
-{
-	float cost = AABB::Union(leafBox, m_nodes[index].box).area();
-	int currentIndex = m_nodes[index].parentIndex;
-
-	while (currentIndex != NULL_INDEX)
-	{
-		AABB currentIndexBox = m_nodes[currentIndex].box;
-		cost += AABB::Union(leafBox, currentIndexBox).area() - currentIndexBox.area();
-
-		currentIndex = m_nodes[currentIndex].parentIndex;
-	}
-
-	return cost;
-}
-
 void AABBTree::RefitFromNode(int index, bool rotateTree)
 {
 	while (index != NULL_INDEX)
 	{
-		int child1 = m_nodes[index].child1;
-		int child2 = m_nodes[index].child2;
+		Node& currentNode = GetNode(index);
+		Node& child1 = GetNode(currentNode.child1);
+		Node& child2 = GetNode(currentNode.child2);
 
-		m_nodes[index].box = AABB::Union(m_nodes[child1].box, m_nodes[child2].box);
+		currentNode.box = AABB::Union(child1.box, child2.box);
 		
 		if (rotateTree)
 		{
 			//Rotate(index);
 		}
 
-		index = m_nodes[index].parentIndex;
+		index = currentNode.parentIndex;
 	}
 }
 
 bool AABBTree::NeedsUpdate(int index)
 {
-	AABB newBox = m_nodes[index].box;
-	AABB oldBox = m_nodes[index].enlargedBox;
+	Node& node = GetNode(index);
+	AABB newBox = node.box;
+	AABB oldBox = node.enlargedBox;
 
 	return (newBox.lowerBound.x < oldBox.lowerBound.x || newBox.lowerBound.y < oldBox.lowerBound.y || newBox.lowerBound.z < oldBox.lowerBound.z ||
 		newBox.upperBound.x > oldBox.upperBound.x || newBox.upperBound.y > oldBox.upperBound.y || newBox.upperBound.z > oldBox.upperBound.z);
@@ -353,67 +407,5 @@ bool AABBTree::NeedsUpdate(int index)
 
 void AABBTree::Rotate(int index)
 {
-	std::cout << "Rotating index: " << index << std::endl;
 
-	if (index == NULL_INDEX || m_nodes[index].isLeaf)
-		return; // Only rotate internal nodes
-
-	int child1 = m_nodes[index].child1;
-	int child2 = m_nodes[index].child2;
-
-	if (child1 == NULL_INDEX || child2 == NULL_INDEX)
-		return; // Safety check: invalid children
-
-	Node& parentNode = m_nodes[index];
-	Node& childNode1 = m_nodes[child1];
-	Node& childNode2 = m_nodes[child2];
-
-	float currentArea = parentNode.box.area();
-
-	// Evaluate potential rotations and select the one that minimizes the area
-	float sibling1Area = (childNode2.child1 != NULL_INDEX) ? AABB::Union(childNode1.box, m_nodes[childNode2.child1].box).area() : FLT_MAX;
-	float sibling2Area = (childNode2.child2 != NULL_INDEX) ? AABB::Union(childNode1.box, m_nodes[childNode2.child2].box).area() : FLT_MAX;
-	float sibling1NewArea = (childNode1.child1 != NULL_INDEX) ? AABB::Union(childNode2.box, m_nodes[childNode1.child1].box).area() : FLT_MAX;
-	float sibling2NewArea = (childNode1.child2 != NULL_INDEX) ? AABB::Union(childNode2.box, m_nodes[childNode1.child2].box).area() : FLT_MAX;
-
-	if (sibling1Area < currentArea)
-	{
-		// Perform left rotation
-		parentNode.child2 = childNode2.child1;
-		childNode2.child1 = index;
-		childNode2.parentIndex = parentNode.parentIndex;
-		parentNode.parentIndex = child2;
-		parentNode.box = AABB::Union(m_nodes[parentNode.child1].box, m_nodes[parentNode.child2].box);
-		childNode2.box = AABB::Union(m_nodes[childNode2.child1].box, m_nodes[childNode2.child2].box);
-	}
-	else if (sibling2Area < currentArea)
-	{
-		// Perform right rotation
-		parentNode.child2 = childNode2.child2;
-		childNode2.child2 = index;
-		childNode2.parentIndex = parentNode.parentIndex;
-		parentNode.parentIndex = child2;
-		parentNode.box = AABB::Union(m_nodes[parentNode.child1].box, m_nodes[parentNode.child2].box);
-		childNode2.box = AABB::Union(m_nodes[childNode2.child1].box, m_nodes[childNode2.child2].box);
-	}
-	else if (sibling1NewArea < currentArea)
-	{
-		// Perform left rotation on child1
-		parentNode.child1 = childNode1.child1;
-		childNode1.child1 = index;
-		childNode1.parentIndex = parentNode.parentIndex;
-		parentNode.parentIndex = child1;
-		parentNode.box = AABB::Union(m_nodes[parentNode.child1].box, m_nodes[parentNode.child2].box);
-		childNode1.box = AABB::Union(m_nodes[childNode1.child1].box, m_nodes[childNode1.child2].box);
-	}
-	else if (sibling2NewArea < currentArea)
-	{
-		// Perform right rotation on child1
-		parentNode.child1 = childNode1.child2;
-		childNode1.child2 = index;
-		childNode1.parentIndex = parentNode.parentIndex;
-		parentNode.parentIndex = child1;
-		parentNode.box = AABB::Union(m_nodes[parentNode.child1].box, m_nodes[parentNode.child2].box);
-		childNode1.box = AABB::Union(m_nodes[childNode1.child1].box, m_nodes[childNode1.child2].box);
-	}
 }

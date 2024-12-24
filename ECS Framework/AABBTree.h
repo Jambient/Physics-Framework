@@ -27,7 +27,7 @@ class AABBTree
 public:
 	AABBTree();
 
-	Node GetNode(int nodeIndex) const { return nodeIndex != NULL_INDEX ? m_nodes[nodeIndex] : Node(); }
+	Node& GetNode(int nodeIndex);
 	std::vector<Node> GetNodes() const { return m_nodes; }
 
 	void InsertLeaf(Entity entity, AABB box);
@@ -42,12 +42,14 @@ public:
 	void PrintTree(int index, int depth = 0);
 	int GetRootIndex() const { return m_rootIndex; }
 
+	int GetDeepestLevel() const;
+
 private:
 	int AllocateLeafNode(Entity entity, const AABB& box);
 	int AllocateInternalNode();
-	int PickBest(const AABB& leafBox);
+	void DeallocateNode(int index);
 
-	float CalculateCost(int index, const AABB& leafBox) const;
+	int PickBest(const AABB& leafBox);
 
 	void RefitFromNode(int index, bool rotateTree = false);
 	bool NeedsUpdate(int index);
@@ -55,8 +57,10 @@ private:
 	void Rotate(int index);
 
 	std::vector<Node> m_nodes;
+	int m_nodeCount;
 	int m_rootIndex = NULL_INDEX;
 
+	std::vector<size_t> m_denseToNodeIndex;
 	std::vector<int> m_nodeToDenseIndex;
 	std::vector<int> m_entityToNodeIndex;
 

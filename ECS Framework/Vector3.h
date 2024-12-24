@@ -155,6 +155,24 @@ public:
 		b = Cross(a, c);
 	}
 
+	static inline Vector3 Min(const Vector3& a, const Vector3& b)
+	{
+		return Vector3(
+			a.x < b.x ? a.x : b.x,
+			a.y < b.y ? a.y : b.y,
+			a.z < b.z ? a.z : b.z
+		);
+	}
+
+	static inline Vector3 Max(const Vector3& a, const Vector3& b)
+	{
+		return Vector3(
+			a.x > b.x ? a.x : b.x,
+			a.y > b.y ? a.y : b.y,
+			a.z > b.z ? a.z : b.z
+		);
+	}
+
 private:
 	//float pad;
 };

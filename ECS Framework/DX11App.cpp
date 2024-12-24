@@ -201,7 +201,7 @@ HRESULT DX11App::Init()
     std::uniform_real_distribution<float> randRotation(0.0f, 3.0f);
     std::uniform_real_distribution<float> randScale(3.0f, 5.0f);
     std::uniform_real_distribution<float> randGravity(-10.0f, -1.0f);
-    std::uniform_real_distribution<float> randVelocity(-0.5f, 0.5f);
+    std::uniform_real_distribution<float> randVelocity(-1.5f, 1.5f);
 
    /* Entity e1 = m_scene.CreateEntity();
     m_scene.AddComponent(
@@ -228,10 +228,10 @@ HRESULT DX11App::Init()
 
         m_scene.AddComponent(
             entity,
-            Particle{ objectPosition, Vector3::Zero, Vector3::Zero, 0.99f, 1 / 2.0f}
+            Particle{ objectPosition, objectVelocity, Vector3::Zero, 0.99f, 1 / 2.0f}
         );
 
-        m_aabbTree.InsertLeaf(entity, AABB(objectPosition, Vector3::One));
+        m_aabbTree.InsertLeaf(entity, AABB::FromPositionScale(objectPosition, Vector3::One));
 
         //std::cout << "Adding entity " << entity << " to AABB tree" << std::endl;
 
@@ -293,19 +293,21 @@ void DX11App::Update()
 
     // Update FPS once every second
     if (m_timeSinceLastTitleUpdate >= 1.0f) {
-        float fps = static_cast<float>(m_framesSinceLastTitleUpdate) / m_timeSinceLastTitleUpdate;
+        float avgFrameTime = m_timeSinceLastTitleUpdate / m_framesSinceLastTitleUpdate;
+        float fps = 1.0f / avgFrameTime;
 
         // Create a new title
         std::wostringstream oss;
         oss.precision(2);
         oss << std::fixed;
-        oss << L"ECS Framework - FPS: " << fps << L" - MS TIME: " << (m_timeSinceLastTitleUpdate / m_framesSinceLastTitleUpdate) * 1000;
+        oss << L"ECS Framework - FPS: " << fps
+            << L" - MS TIME: " << avgFrameTime * 1000;
 
         // Update window title
         SetWindowText(m_windowHandle, oss.str().c_str());
 
-        // Reset counters
-        m_timeSinceLastTitleUpdate = 0.0f;
+        // Reset counters but preserve leftover time
+        m_timeSinceLastTitleUpdate -= 1.0f;
         m_framesSinceLastTitleUpdate = 0;
     }
 
@@ -351,7 +353,7 @@ void DX11App::Update()
         m_physicsSystem->Update(FPS60);
         m_physicsAccumulator -= FPS60;
 
-        
+        //std::cout << "Deepest Tree Level: " << m_aabbTree.GetDeepestLevel() << std::endl;
         // also need to have individual elapsed time for system
     }
 
@@ -365,7 +367,7 @@ void DX11App::Update()
         m_instanceData[entity].Position = particle->Position;
         m_instanceData[entity].Scale = Vector3::One;
 
-        m_aabbTree.Update(entity, AABB(particle->Position, Vector3::One));
+        m_aabbTree.Update(entity, AABB::FromPositionScale(particle->Position, Vector3::One));
     });
 
     D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -422,27 +424,27 @@ void DX11App::Draw()
     TransformBuffer transformData;
     sm->GetConstantBufferData<TransformBuffer>("TransformBuffer", transformData);
 
-    for (const Node& node : m_aabbTree.GetNodes())
-    {
-        if (true)// m_aabbTree.GetNode(node.child1).isLeaf || m_aabbTree.GetNode(node.child2).isLeaf)
-        {
-            Vector3 boxPos = node.box.getPosition();
-            Vector3 boxSize = node.box.getSize();
+    //for (const Node& node : m_aabbTree.GetNodes())
+    //{
+    //    if (true)// m_aabbTree.GetNode(node.child1).isLeaf || m_aabbTree.GetNode(node.child2).isLeaf)
+    //    {
+    //        Vector3 boxPos = node.box.getPosition();
+    //        Vector3 boxSize = node.box.getSize();
 
-            XMMATRIX transform = XMMatrixScaling(boxSize.x, boxSize.y, boxSize.z) * XMMatrixTranslation(boxPos.x, boxPos.y, boxPos.z);
+    //        XMMATRIX transform = XMMatrixScaling(boxSize.x, boxSize.y, boxSize.z) * XMMatrixTranslation(boxPos.x, boxPos.y, boxPos.z);
 
-            transformData.World = XMMatrixTranspose(transform);
-            sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
+    //        transformData.World = XMMatrixTranspose(transform);
+    //        sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
 
-            UINT stride = m_cubeMeshData.VBStride;
-            UINT offset = m_cubeMeshData.VBOffset;
+    //        UINT stride = m_cubeMeshData.VBStride;
+    //        UINT offset = m_cubeMeshData.VBOffset;
 
-            m_immediateContext->IASetVertexBuffers(0, 1, &m_cubeMeshData.VertexBuffer, &stride, &offset);
-            m_immediateContext->IASetIndexBuffer(m_cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+    //        m_immediateContext->IASetVertexBuffers(0, 1, &m_cubeMeshData.VertexBuffer, &stride, &offset);
+    //        m_immediateContext->IASetIndexBuffer(m_cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
-            m_immediateContext->DrawIndexed(m_cubeMeshData.IndexCount, 0, 0);
-        }
-    }
+    //        m_immediateContext->DrawIndexed(m_cubeMeshData.IndexCount, 0, 0);
+    //    }
+    //}
 
     // draw imgui
     ImGui::Render();
