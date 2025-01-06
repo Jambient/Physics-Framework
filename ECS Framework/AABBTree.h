@@ -9,7 +9,7 @@
 // inspired by the 2019 GDC talk by Erin Catto https://box2d.org/files/ErinCatto_DynamicBVH_GDC2019.pdf
 
 constexpr int NULL_INDEX = -1;
-constexpr float ENLARGEMENT_FACTOR = 0.1f;
+constexpr float ENLARGEMENT_FACTOR = 0.3f;
 
 struct Node
 {
@@ -43,6 +43,8 @@ public:
 	int GetRootIndex() const { return m_rootIndex; }
 
 	int GetDeepestLevel() const;
+
+	std::vector<std::pair<Entity, Entity>> GetPotentialIntersections();
 
 private:
 	int AllocateLeafNode(Entity entity, const AABB& box);

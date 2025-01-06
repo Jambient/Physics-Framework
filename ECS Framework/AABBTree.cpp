@@ -3,6 +3,7 @@
 #include <utility>
 #include <iostream>
 #include <functional>
+#include <stack>
 
 struct QueueNode {
 	int index;
@@ -132,6 +133,7 @@ void AABBTree::Update(Entity entity, const AABB& newBox)
 	GetNode(leafIndex).box = newBox;
 
 	// check if the leaf node actually needs updating
+	//if (!NeedsUpdate(leafIndex)) { RefitFromNode(GetNode(leafIndex).parentIndex); return; }
 	if (!NeedsUpdate(leafIndex)) { return; }
 
 	RemoveLeaf(leafIndex);
@@ -149,7 +151,7 @@ Entity AABBTree::Intersect(const Ray& ray, float& closestDistance)
 	std::priority_queue<std::pair<float, int>, std::vector<std::pair<float, int>>, std::greater<>> queue;
 
 	float initialDistance;
-	if (ray.Intersect(m_nodes[m_rootIndex].box, initialDistance))
+	if (ray.Intersect(GetNode(m_rootIndex).box, initialDistance))
 		queue.push({ initialDistance, m_rootIndex });
 
 	while (!queue.empty())
@@ -157,7 +159,7 @@ Entity AABBTree::Intersect(const Ray& ray, float& closestDistance)
 		auto [distance, currentIndex] = queue.top();
 		queue.pop();
 
-		const Node& currentNode = m_nodes[currentIndex];
+		const Node& currentNode = GetNode(currentIndex);
 
 		// Skip nodes farther than the closest intersection found so far
 		if (distance >= closestDistance)
@@ -178,8 +180,8 @@ Entity AABBTree::Intersect(const Ray& ray, float& closestDistance)
 			// Internal node, test children
 			float dist1, dist2;
 
-			bool intersectChild1 = ray.Intersect(m_nodes[currentNode.child1].box, dist1);
-			bool intersectChild2 = ray.Intersect(m_nodes[currentNode.child2].box, dist2);
+			bool intersectChild1 = ray.Intersect(GetNode(currentNode.child1).box, dist1);
+			bool intersectChild2 = ray.Intersect(GetNode(currentNode.child2).box, dist2);
 
 			if (intersectChild1)
 				queue.push({ dist1, currentNode.child1 });
@@ -259,6 +261,51 @@ int AABBTree::GetDeepestLevel() const
 		};
 
 	return CalculateDepth(m_rootIndex);
+}
+
+std::vector<std::pair<Entity, Entity>> AABBTree::GetPotentialIntersections()
+{
+	std::vector<std::pair<Entity, Entity>> potentialIntersections;
+
+	if (m_rootIndex == NULL_INDEX) {
+		return potentialIntersections; // Empty tree
+	}
+
+	// Stack for node pairs to check for overlap
+	std::stack<std::pair<int, int>> nodePairs;
+	nodePairs.push({ m_rootIndex, m_rootIndex });
+
+	while (!nodePairs.empty()) {
+		auto [indexA, indexB] = nodePairs.top();
+		nodePairs.pop();
+
+		// Get nodes
+		const Node& nodeA = GetNode(indexA);
+		const Node& nodeB = GetNode(indexB);
+
+		// Skip if their AABBs do not overlap
+		if (!AABB::Overlap(nodeA.box, nodeB.box)) {
+			continue;
+		}
+
+		// If both nodes are leaves and not the same node, add them to the result
+		if (nodeA.isLeaf && nodeB.isLeaf && indexA != indexB) {
+			potentialIntersections.emplace_back(nodeA.entity, nodeB.entity);
+		}
+		// If one or both are internal nodes, push their children for further checks
+		else {
+			if (!nodeA.isLeaf) {
+				nodePairs.push({ nodeA.child1, indexB });
+				nodePairs.push({ nodeA.child2, indexB });
+			}
+			if (!nodeB.isLeaf) {
+				nodePairs.push({ indexA, nodeB.child1 });
+				nodePairs.push({ indexA, nodeB.child2 });
+			}
+		}
+	}
+
+	return potentialIntersections;
 }
 
 int AABBTree::AllocateLeafNode(Entity entity, const AABB& box)

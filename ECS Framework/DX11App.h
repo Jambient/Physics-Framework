@@ -16,6 +16,7 @@ struct InstanceData
 {
 	Vector3 Position;
 	Vector3 Scale;
+	Vector3 Color;
 };
 
 /**

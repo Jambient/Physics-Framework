@@ -101,6 +101,7 @@ HRESULT DX11App::Init()
 
         { "INSTANCE_POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
         { "INSTANCE_SCALE", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+        { "INSTANCE_COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
     };
 
     // get an instance of the shader manager and initialize it
@@ -369,6 +370,17 @@ void DX11App::Update()
 
         m_aabbTree.Update(entity, AABB::FromPositionScale(particle->Position, Vector3::One));
     });
+
+    for (Entity entity = 0; entity < MAX_ENTITIES; entity++)
+    {
+        m_instanceData[entity].Color = Vector3(0.05f, 0.05f, 0.05f);
+    }
+
+    /*for (const auto [entity1, entity2] : m_aabbTree.GetPotentialIntersections())
+    {
+        m_instanceData[entity1].Color = Vector3(1.0f, 0.2f, 0.2f);
+        m_instanceData[entity2].Color = Vector3(1.0f, 0.2f, 0.2f);
+    }*/
 
     D3D11_MAPPED_SUBRESOURCE mappedResource;
     HRESULT hr = m_immediateContext->Map(m_instanceBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
