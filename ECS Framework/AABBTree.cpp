@@ -267,43 +267,85 @@ std::vector<std::pair<Entity, Entity>> AABBTree::GetPotentialIntersections()
 {
 	std::vector<std::pair<Entity, Entity>> potentialIntersections;
 
-	if (m_rootIndex == NULL_INDEX) {
+	if (m_rootIndex == NULL_INDEX || GetNode(m_rootIndex).isLeaf) {
 		return potentialIntersections; // Empty tree
 	}
 
 	// Stack for node pairs to check for overlap
 	std::stack<std::pair<int, int>> nodePairs;
-	nodePairs.push({ m_rootIndex, m_rootIndex });
+	nodePairs.push({ GetNode(m_rootIndex).child1, GetNode(m_rootIndex).child2 });
 
-	while (!nodePairs.empty()) {
+	while (!nodePairs.empty())
+	{
 		auto [indexA, indexB] = nodePairs.top();
 		nodePairs.pop();
 
-		// Get nodes
+		//Get nodes
 		const Node& nodeA = GetNode(indexA);
 		const Node& nodeB = GetNode(indexB);
 
-		// Skip if their AABBs do not overlap
-		if (!AABB::Overlap(nodeA.box, nodeB.box)) {
-			continue;
-		}
-
-		// If both nodes are leaves and not the same node, add them to the result
-		if (nodeA.isLeaf && nodeB.isLeaf && indexA != indexB) {
-			potentialIntersections.emplace_back(nodeA.entity, nodeB.entity);
-		}
-		// If one or both are internal nodes, push their children for further checks
-		else {
-			if (!nodeA.isLeaf) {
-				nodePairs.push({ nodeA.child1, indexB });
-				nodePairs.push({ nodeA.child2, indexB });
+		if (nodeA.isLeaf)
+		{
+			if (nodeB.isLeaf)
+			{
+				if (AABB::Overlap(nodeA.box, nodeB.box))
+				{
+					potentialIntersections.push_back({ nodeA.entity, nodeB.entity });
+				}
 			}
-			if (!nodeB.isLeaf) {
+			else
+			{
 				nodePairs.push({ indexA, nodeB.child1 });
 				nodePairs.push({ indexA, nodeB.child2 });
 			}
 		}
+		else
+		{
+			if (nodeB.isLeaf)
+			{
+				nodePairs.push({ nodeA.child1, indexB });
+				nodePairs.push({ nodeA.child2, indexB });
+			}
+			else
+			{
+				nodePairs.push({ nodeA.child1, nodeB.child1 });
+				nodePairs.push({ nodeA.child1, nodeB.child2 });
+				nodePairs.push({ nodeA.child2, nodeB.child1 });
+				nodePairs.push({ nodeA.child2, nodeB.child2 });
+			}
+		}
 	}
+	//nodePairs.push({ m_rootIndex, m_rootIndex });
+
+	//while (!nodePairs.empty()) {
+	//	auto [indexA, indexB] = nodePairs.top();
+	//	nodePairs.pop();
+
+	//	// Get nodes
+	//	const Node& nodeA = GetNode(indexA);
+	//	const Node& nodeB = GetNode(indexB);
+
+	//	// Skip if their AABBs do not overlap
+	//	if (!AABB::Overlap(nodeA.box, nodeB.box)) {
+	//		continue;
+	//	}
+
+	//	// If both nodes are leaves and not the same node, add them to the result
+	//	if (nodeA.isLeaf && nodeB.isLeaf && indexA != indexB) {
+	//		potentialIntersections.push_back({ nodeA.entity, nodeB.entity });
+	//	}
+	//	// If one or both are internal nodes, push their children for further checks
+	//	else {
+	//		if (!nodeA.isLeaf) {
+	//			nodePairs.push({ nodeA.child1, indexB });
+	//			nodePairs.push({ nodeA.child2, indexB });
+	//		}
+	//		if (!nodeB.isLeaf) {
+	//			nodePairs.push({ indexA, nodeB.child1 });
+	//			nodePairs.push({ indexA, nodeB.child2 });
+	//		}
+	//	}
+	//}
 
 	return potentialIntersections;
 }

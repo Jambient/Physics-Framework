@@ -7,6 +7,8 @@
 // this quaternion class was made with great help from https://www.3dgep.com/understanding-quaternions/ 
 // which goes through a large amount of the required equations.
 
+// https://allenchou.net/2014/02/game-physics-broadphase-dynamic-aabb-tree/
+
 class Quaternion
 {
 public:
