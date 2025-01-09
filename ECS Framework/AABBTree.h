@@ -58,6 +58,8 @@ private:
 
 	void Rotate(int index);
 
+	void PotentialIntersectionHelper(std::vector<std::pair<Entity, Entity>>& intersections, int nodeA, int nodeB);
+
 	std::vector<Node> m_nodes;
 	int m_nodeCount;
 	int m_rootIndex = NULL_INDEX;

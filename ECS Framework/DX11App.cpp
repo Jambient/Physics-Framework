@@ -152,7 +152,7 @@ HRESULT DX11App::Init()
     // create lights
     Light directionalLight;
     directionalLight.Type = LightType::DIRECTIONAL;
-    directionalLight.Color = XMFLOAT3(1.0f, 1.0f, 1.0f);
+    directionalLight.Color = XMFLOAT3(0.5f, 0.5f, 0.5f);
     directionalLight.Direction = XMFLOAT3(0.0f, 0.0f, 1.0f);
 
     m_lightBufferData.Lights[0] = directionalLight;
@@ -204,7 +204,7 @@ HRESULT DX11App::Init()
     std::uniform_real_distribution<float> randGravity(-10.0f, -1.0f);
     std::uniform_real_distribution<float> randVelocity(-1.5f, 1.5f);
 
-   /* Entity e1 = m_scene.CreateEntity();
+    /* Entity e1 = m_scene.CreateEntity();
     m_scene.AddComponent(
         e1,
         Particle{ Vector3::Left * 2.0f, Vector3::Zero, Vector3::Down, 0.99f, 1 / 2.0f}
@@ -221,11 +221,27 @@ HRESULT DX11App::Init()
 
     m_aabbTree.PrintTree(m_aabbTree.GetRootIndex());*/
 
+    /*entities[0] = m_scene.CreateEntity();
+    m_scene.AddComponent(
+        entities[0],
+        Particle{ Vector3::Left, Vector3::Left, Vector3::Zero, 0.99f, 1 / 2.0f}
+    );
+    m_aabbTree.InsertLeaf(entities[0], AABB::FromPositionScale(Vector3::Left, Vector3::One));
+
+    entities[1] = m_scene.CreateEntity();
+    m_scene.AddComponent(
+        entities[1],
+        Particle{ Vector3::Right, Vector3::Right, Vector3::Zero, 0.99f, 1 / 2.0f }
+    );
+    m_aabbTree.InsertLeaf(entities[1], AABB::FromPositionScale(Vector3::Right, Vector3::One));*/
+
     for (Entity entity : entities)
     {
         entity = m_scene.CreateEntity();
+        float velocityScale = (rand() % 100) / 100.0f;
         Vector3 objectPosition = Vector3(randPosition(generator), randPosition(generator), randPosition(generator));
-        Vector3 objectVelocity = Vector3(randVelocity(generator), randVelocity(generator), randVelocity(generator));
+        Vector3 objectVelocity = -objectPosition.normalized() * velocityScale;
+        //Vector3 objectVelocity = Vector3(randVelocity(generator), randVelocity(generator), randVelocity(generator));
 
         m_scene.AddComponent(
             entity,
@@ -286,6 +302,7 @@ HRESULT DX11App::Init()
 
 void DX11App::Update()
 {
+    auto start = std::chrono::high_resolution_clock::now();
     double deltaTime = m_timer.GetDeltaTime();
 
     // update window text
@@ -378,8 +395,8 @@ void DX11App::Update()
 
     /*for (const auto [entity1, entity2] : m_aabbTree.GetPotentialIntersections())
     {
-        m_instanceData[entity1].Color = Vector3(1.0f, 0.2f, 0.2f);
-        m_instanceData[entity2].Color = Vector3(1.0f, 0.2f, 0.2f);
+        m_instanceData[entity1].Color = Vector3(1.0f, 0.0f, 0.0f);
+        m_instanceData[entity2].Color = Vector3(1.0f, 0.0f, 0.0f);
     }*/
 
     D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -395,6 +412,11 @@ void DX11App::Update()
     ImGui::ShowDemoWindow();
 
     m_timer.Tick();
+
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+
+    std::cout << "Frame time: " << duration.count() << "ms" << std::endl;
 }
 
 void DX11App::Draw()
