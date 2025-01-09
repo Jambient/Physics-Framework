@@ -85,6 +85,8 @@ private:
 
 	ID3D11RasterizerState* m_wireframeRasterizerState;
 
+	Entity m_selectedEntity = INVALID_ENTITY;
+
 	/**
 	 * @brief Builds a ray pointing towards the provided position on the screen from the camera's position
 	 * @param x The X offset of the position on the screen.

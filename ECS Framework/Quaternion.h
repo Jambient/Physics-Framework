@@ -70,6 +70,28 @@ public:
 		return angles;
 	}
 
+	float* toRotationMatrix() const
+	{
+		float* rotMat = new float[9];
+
+		// First row of the rotation matrix
+		rotMat[0] = 2 * (r * r + i * i) - 1;
+		rotMat[1] = 2 * (i * j - r * k);
+		rotMat[2] = 2 * (i * k + r * j);
+
+		// Second row of the rotation matrix
+		rotMat[3] = 2 * (i * j + r * k);
+		rotMat[4] = 2 * (i * i + j * j) - 1;
+		rotMat[5] = 2 * (j * k - r * i);
+
+		// Third row of the rotation matrix
+		rotMat[6] = 2 * (i * k - r * j);
+		rotMat[7] = 2 * (j * k + r * i);
+		rotMat[8] = 2 * (r * r + k * k) - 1;
+
+		return rotMat;
+	}
+
 	// operator overrides
 	Quaternion operator*(float scalar) const
 	{

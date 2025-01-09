@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <random>
 #include <sstream>
+#include <format>
 
 #define ThrowIfFailed(x)  if (FAILED(x)) { throw new std::bad_exception;}
 
@@ -221,53 +222,53 @@ HRESULT DX11App::Init()
 
     m_aabbTree.PrintTree(m_aabbTree.GetRootIndex());*/
 
-    /*entities[0] = m_scene.CreateEntity();
+    entities[0] = m_scene.CreateEntity();
     m_scene.AddComponent(
         entities[0],
-        Particle{ Vector3::Left, Vector3::Left, Vector3::Zero, 0.99f, 1 / 2.0f}
+        Particle{ Vector3::Left, Vector3::Zero, Vector3::Zero, 0.99f, 1 / 2.0f}
     );
     m_aabbTree.InsertLeaf(entities[0], AABB::FromPositionScale(Vector3::Left, Vector3::One));
 
     entities[1] = m_scene.CreateEntity();
     m_scene.AddComponent(
         entities[1],
-        Particle{ Vector3::Right, Vector3::Right, Vector3::Zero, 0.99f, 1 / 2.0f }
+        Particle{ Vector3::Right, Vector3::Zero, Vector3::Zero, 0.99f, 1 / 2.0f }
     );
-    m_aabbTree.InsertLeaf(entities[1], AABB::FromPositionScale(Vector3::Right, Vector3::One));*/
+    m_aabbTree.InsertLeaf(entities[1], AABB::FromPositionScale(Vector3::Right, Vector3::One));
 
-    for (Entity entity : entities)
-    {
-        entity = m_scene.CreateEntity();
-        float velocityScale = (rand() % 100) / 100.0f;
-        Vector3 objectPosition = Vector3(randPosition(generator), randPosition(generator), randPosition(generator));
-        Vector3 objectVelocity = -objectPosition.normalized() * velocityScale;
-        //Vector3 objectVelocity = Vector3(randVelocity(generator), randVelocity(generator), randVelocity(generator));
+    //for (Entity entity : entities)
+    //{
+    //    entity = m_scene.CreateEntity();
+    //    float velocityScale = (rand() % 100) / 100.0f;
+    //    Vector3 objectPosition = Vector3(randPosition(generator), randPosition(generator), randPosition(generator));
+    //    Vector3 objectVelocity = -objectPosition.normalized() * velocityScale;
+    //    //Vector3 objectVelocity = Vector3(randVelocity(generator), randVelocity(generator), randVelocity(generator));
 
-        m_scene.AddComponent(
-            entity,
-            Particle{ objectPosition, objectVelocity, Vector3::Zero, 0.99f, 1 / 2.0f}
-        );
+    //    m_scene.AddComponent(
+    //        entity,
+    //        Particle{ objectPosition, objectVelocity, Vector3::Zero, 0.99f, 1 / 2.0f}
+    //    );
 
-        m_aabbTree.InsertLeaf(entity, AABB::FromPositionScale(objectPosition, Vector3::One));
+    //    m_aabbTree.InsertLeaf(entity, AABB::FromPositionScale(objectPosition, Vector3::One));
 
-        //std::cout << "Adding entity " << entity << " to AABB tree" << std::endl;
+    //    //std::cout << "Adding entity " << entity << " to AABB tree" << std::endl;
 
-        /*m_scene.AddComponent(
-            entity, 
-            Gravity{ Vector3(0.0f, randGravity(generator), 0.0f) });
+    //    /*m_scene.AddComponent(
+    //        entity, 
+    //        Gravity{ Vector3(0.0f, randGravity(generator), 0.0f) });
 
-        m_scene.AddComponent(
-            entity,
-            RigidBody{ { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } });
+    //    m_scene.AddComponent(
+    //        entity,
+    //        RigidBody{ { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } });
 
-        Vector3 objectPosition = Vector3(randPosition(generator), randPosition(generator), randPosition(generator));
-        Vector3 objectRotation = Vector3(randRotation(generator), randRotation(generator), randRotation(generator));
-        Vector3 objectScale = Vector3(randScale(generator), randScale(generator), randScale(generator));
+    //    Vector3 objectPosition = Vector3(randPosition(generator), randPosition(generator), randPosition(generator));
+    //    Vector3 objectRotation = Vector3(randRotation(generator), randRotation(generator), randRotation(generator));
+    //    Vector3 objectScale = Vector3(randScale(generator), randScale(generator), randScale(generator));
 
-        m_scene.AddComponent(
-            entity,
-            Transform{ objectPosition, objectRotation, objectScale });*/
-    }
+    //    m_scene.AddComponent(
+    //        entity,
+    //        Transform{ objectPosition, objectRotation, objectScale });*/
+    //}
 
     //m_aabbTree.PrintTree(m_aabbTree.GetRootIndex());
     m_instanceData.resize(MAX_ENTITIES);
@@ -393,11 +394,11 @@ void DX11App::Update()
         m_instanceData[entity].Color = Vector3(0.05f, 0.05f, 0.05f);
     }
 
-    /*for (const auto [entity1, entity2] : m_aabbTree.GetPotentialIntersections())
+    for (const auto [entity1, entity2] : m_aabbTree.GetPotentialIntersections())
     {
         m_instanceData[entity1].Color = Vector3(1.0f, 0.0f, 0.0f);
         m_instanceData[entity2].Color = Vector3(1.0f, 0.0f, 0.0f);
-    }*/
+    }
 
     D3D11_MAPPED_SUBRESOURCE mappedResource;
     HRESULT hr = m_immediateContext->Map(m_instanceBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
@@ -409,7 +410,18 @@ void DX11App::Update()
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
-    ImGui::ShowDemoWindow();
+
+    ImGui::Begin("Entity Editor");
+    if (m_selectedEntity != INVALID_ENTITY)
+    {
+        ImGui::Text(std::format("The current selected entity has ID: {}", m_selectedEntity).c_str());
+        
+    }
+    else
+    {
+        ImGui::Text("No entity selected.");
+    }
+    ImGui::End();
 
     m_timer.Tick();
 
@@ -521,6 +533,8 @@ void DX11App::OnMouseClick(WPARAM pressedBtn, int x, int y)
         {
             std::cout << "Clicked on entity with ID " << entity << " and distance " << intersectDistance << std::endl;
         }
+        
+        m_selectedEntity = entity;
     }
 }
 
