@@ -163,7 +163,7 @@ public:
 
 	void RemoveEntity(Entity entity)
 	{
-		assert(m_entityToDenseIndex[entity] != UINT32_MAX && "Removing non-existent component.");
+		if (m_entityToDenseIndex[entity] == INVALID_ENTITY) return;
 
 		// Get indices
 		size_t removedEntityIndex = m_entityToDenseIndex[entity];

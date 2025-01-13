@@ -30,6 +30,11 @@ Node& AABBTree::GetNode(int nodeIndex)
 	return m_nodes[m_nodeToDenseIndex[nodeIndex]];
 }
 
+Node& AABBTree::GetNodeFromEntity(Entity entity)
+{
+	return m_nodes[m_nodeToDenseIndex[m_entityToNodeIndex[entity]]];
+}
+
 void AABBTree::InsertLeaf(Entity entity, AABB box)
 {
 	int leafIndex = AllocateLeafNode(entity, box);
@@ -272,43 +277,15 @@ std::vector<std::pair<Entity, Entity>> AABBTree::GetPotentialIntersections()
 	std::vector<std::pair<Entity, Entity>> intersections;
 	if (m_rootIndex == NULL_INDEX) return intersections;
 
-	// Traverse the tree and check for overlapping pairs
-	/*std::function<void(int, int)> traverse = [&](int nodeA, int nodeB) {
-		if (nodeA == NULL_INDEX || nodeB == NULL_INDEX) return;
-
-		const Node& a = GetNode(nodeA);
-		const Node& b = GetNode(nodeB);
-
-		if (!AABB::Overlap(a.box, b.box)) return;
-
-		if (a.isLeaf && b.isLeaf && a.entity != b.entity) {
-			intersections.emplace_back(a.entity, b.entity);
-		}
-		else {
-			if (!a.isLeaf && !b.isLeaf) {
-				traverse(a.child1, b.child1);
-				traverse(a.child1, b.child2);
-				traverse(a.child2, b.child1);
-				traverse(a.child2, b.child2);
-			}
-			else if (!a.isLeaf) {
-				traverse(a.child1, nodeB);
-				traverse(a.child2, nodeB);
-			}
-			else {
-				traverse(nodeA, b.child1);
-				traverse(nodeA, b.child2);
-			}
-		}
-		};*/
+	std::unordered_set<uint64_t> found;
 
 	// Start traversal from the root
-	PotentialIntersectionHelper(intersections, m_rootIndex, m_rootIndex);
+	PotentialIntersectionHelper(intersections, found, m_rootIndex, m_rootIndex);
 
 	return intersections;
 }
 
-void AABBTree::PotentialIntersectionHelper(std::vector<std::pair<Entity, Entity>>& intersections, int nodeA, int nodeB)
+void AABBTree::PotentialIntersectionHelper(std::vector<std::pair<Entity, Entity>>& intersections, std::unordered_set<uint64_t>& found, int nodeA, int nodeB)
 {
 	if (nodeA == NULL_INDEX || nodeB == NULL_INDEX) return;
 
@@ -318,22 +295,30 @@ void AABBTree::PotentialIntersectionHelper(std::vector<std::pair<Entity, Entity>
 	if (!AABB::Overlap(a.box, b.box)) return;
 
 	if (a.isLeaf && b.isLeaf && a.entity != b.entity) {
-		intersections.emplace_back(a.entity, b.entity);
+		uint64_t a64 = (uint64_t)a.entity;
+		uint64_t b64 = (uint64_t)b.entity;
+		uint64_t hash = a.entity > b.entity ? ((a64 << 32) | b64) : ((b64 << 32) | a64);
+
+		if (found.find(hash) == found.end())
+		{
+			intersections.emplace_back(a.entity, b.entity);
+			found.insert(hash);
+		}
 	}
 	else {
 		if (!a.isLeaf && !b.isLeaf) {
-			PotentialIntersectionHelper(intersections, a.child1, b.child1);
-			PotentialIntersectionHelper(intersections, a.child1, b.child2);
-			PotentialIntersectionHelper(intersections, a.child2, b.child1);
-			PotentialIntersectionHelper(intersections, a.child2, b.child2);
+			PotentialIntersectionHelper(intersections, found, a.child1, b.child2);
+			PotentialIntersectionHelper(intersections, found, a.child2, b.child1);
+			PotentialIntersectionHelper(intersections, found, a.child2, b.child2);
+			PotentialIntersectionHelper(intersections, found, a.child1, b.child1);
 		}
 		else if (!a.isLeaf) {
-			PotentialIntersectionHelper(intersections, a.child1, nodeB);
-			PotentialIntersectionHelper(intersections, a.child2, nodeB);
+			PotentialIntersectionHelper(intersections, found, a.child1, nodeB);
+			PotentialIntersectionHelper(intersections, found, a.child2, nodeB);
 		}
 		else {
-			PotentialIntersectionHelper(intersections, nodeA, b.child1);
-			PotentialIntersectionHelper(intersections, nodeA, b.child2);
+			PotentialIntersectionHelper(intersections, found, nodeA, b.child1);
+			PotentialIntersectionHelper(intersections, found, nodeA, b.child2);
 		}
 	}
 }

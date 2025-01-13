@@ -133,6 +133,7 @@
     <ClInclude Include="AABBTree.h" />
     <ClInclude Include="Archetype.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="Collision.h" />
     <ClInclude Include="ComponentManager.h" />
     <ClInclude Include="Components.h" />
     <ClInclude Include="Definitions.h" />
@@ -171,6 +172,7 @@
   <ItemGroup>
     <ClCompile Include="AABBTree.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="Collision.cpp" />
     <ClCompile Include="DX11App.cpp" />
     <ClCompile Include="DX11Framework.cpp" />
     <ClCompile Include="EntityManager.cpp" />

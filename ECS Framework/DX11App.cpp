@@ -166,6 +166,7 @@ HRESULT DX11App::Init()
     m_scene.RegisterComponent<Gravity>();
     m_scene.RegisterComponent<RigidBody>();
     m_scene.RegisterComponent<Transform>();
+    m_scene.RegisterComponent<RandomComponent>();
 
     m_physicsSystem = m_scene.RegisterSystem<PhysicsSystem>();
     m_physicsSystem->m_scene = &m_scene;
@@ -233,6 +234,10 @@ HRESULT DX11App::Init()
     m_scene.AddComponent(
         entities[1],
         Particle{ Vector3::Right, Vector3::Zero, Vector3::Zero, 0.99f, 1 / 2.0f }
+    );
+    m_scene.AddComponent(
+        entities[1],
+        RandomComponent{ 0.05f }
     );
     m_aabbTree.InsertLeaf(entities[1], AABB::FromPositionScale(Vector3::Right, Vector3::One));
 
@@ -370,10 +375,33 @@ void DX11App::Update()
         }
     }
 
-    for (const auto [entity1, entity2] : m_aabbTree.GetPotentialIntersections())
+    std::vector<std::pair<Entity, Entity>> potential = m_aabbTree.GetPotentialIntersections();
+
+    for (const auto [entity1, entity2] : potential)
     {
         m_instanceData[entity1].Color = Vector3(1.0f, 0.0f, 0.0f);
         m_instanceData[entity2].Color = Vector3(1.0f, 0.0f, 0.0f);
+
+        /*AABB e1Box = m_aabbTree.GetNodeFromEntity(entity1).box;
+        AABB e2Box = m_aabbTree.GetNodeFromEntity(entity2).box;
+        Particle* e1Particle = m_scene.GetComponent<Particle>(entity1);
+
+        Vector3 overlap = Vector3::Min(e1Box.upperBound, e2Box.upperBound) - Vector3::Max(e1Box.lowerBound, e2Box.lowerBound);
+        if (overlap.x < overlap.y && overlap.x < overlap.z)
+        {
+            float direction = e1Box.lowerBound.x < e2Box.lowerBound.x ? -1 : 1;
+            e1Particle->Position.x += overlap.x * direction;
+        }
+        else if (overlap.y < overlap.z)
+        {
+            float direction = e1Box.lowerBound.y < e2Box.lowerBound.y ? -1 : 1;
+            e1Particle->Position.y += overlap.y * direction;
+        }
+        else
+        {
+            float direction = e1Box.lowerBound.z < e2Box.lowerBound.z ? -1 : 1;
+            e1Particle->Position.z += overlap.z * direction;
+        }*/
     }
 
     D3D11_MAPPED_SUBRESOURCE mappedResource;

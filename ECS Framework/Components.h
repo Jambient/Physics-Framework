@@ -19,6 +19,12 @@ struct Particle
 	float inverseMass;
 };
 
+struct SphereCollider
+{
+	Vector3 center;
+	float radius;
+};
+
 struct Transform
 {
 	Vector3 Position = Vector3::Zero;

@@ -5,6 +5,7 @@
 #include "Ray.h"
 #include <vector>
 #include <queue>
+#include <unordered_set>
 
 // inspired by the 2019 GDC talk by Erin Catto https://box2d.org/files/ErinCatto_DynamicBVH_GDC2019.pdf
 
@@ -28,6 +29,7 @@ public:
 	AABBTree();
 
 	Node& GetNode(int nodeIndex);
+	Node& GetNodeFromEntity(Entity entity);
 	std::vector<Node> GetNodes() const { return m_nodes; }
 
 	void InsertLeaf(Entity entity, AABB box);
@@ -59,7 +61,7 @@ private:
 
 	void Rotate(int index);
 
-	void PotentialIntersectionHelper(std::vector<std::pair<Entity, Entity>>& intersections, int nodeA, int nodeB);
+	void PotentialIntersectionHelper(std::vector<std::pair<Entity, Entity>>& intersections, std::unordered_set<uint64_t>& found, int nodeA, int nodeB);
 
 	std::vector<Node> m_nodes;
 	int m_nodeCount;
