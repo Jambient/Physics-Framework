@@ -15,6 +15,10 @@ public:
 	void SetSignature(Entity entity, Signature signature);
 	Signature GetSignature(Entity entity);
 
+	uint32_t GetEntityCount();
+
+	bool DoesEntityExist(Entity entity);
+
 private:
 	std::queue<Entity> m_availableEntities;
 	std::array<Signature, MAX_ENTITIES> m_signatures;

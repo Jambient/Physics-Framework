@@ -143,6 +143,12 @@ public:
 		}
 	}
 
+	template<typename T>
+	T* GetComponent(Entity entity)
+	{
+		return m_componentColumns[(ComponentType)TypeIndexGenerator::GetTypeIndex<T>()].GetComponentData<T>(m_entityToDenseIndex[entity]);
+	}
+
 	std::vector<ComponentData> GetComponentData(Entity entity)
 	{
 		std::vector<ComponentData> componentData;

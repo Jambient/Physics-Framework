@@ -303,32 +303,7 @@ HRESULT DX11App::Init()
 
 void DX11App::Update()
 {
-    auto start = std::chrono::high_resolution_clock::now();
     double deltaTime = m_timer.GetDeltaTime();
-
-    // update window text
-    m_timeSinceLastTitleUpdate += deltaTime;
-    m_framesSinceLastTitleUpdate++;
-
-    // Update FPS once every second
-    if (m_timeSinceLastTitleUpdate >= 1.0f) {
-        float avgFrameTime = m_timeSinceLastTitleUpdate / m_framesSinceLastTitleUpdate;
-        float fps = 1.0f / avgFrameTime;
-
-        // Create a new title
-        std::wostringstream oss;
-        oss.precision(2);
-        oss << std::fixed;
-        oss << L"ECS Framework - FPS: " << fps
-            << L" - MS TIME: " << avgFrameTime * 1000;
-
-        // Update window title
-        SetWindowText(m_windowHandle, oss.str().c_str());
-
-        // Reset counters but preserve leftover time
-        m_timeSinceLastTitleUpdate -= 1.0f;
-        m_framesSinceLastTitleUpdate = 0;
-    }
 
     // store the elapsed time in the global buffer
     m_globalBufferData.TimeStamp = (float)m_timer.GetElapsedTime();
@@ -376,12 +351,6 @@ void DX11App::Update()
         // also need to have individual elapsed time for system
     }
 
-    // update instance data
-    /*m_scene.ForEach<Transform>([&](Entity entity, Transform* transform) {
-        m_instanceData[entity].Position = transform->Position;
-        m_instanceData[entity].Scale = transform->Scale;
-    });*/
-
     m_scene.ForEach<Particle>([&](Entity entity, Particle* particle) {
         m_instanceData[entity].Position = particle->Position;
         m_instanceData[entity].Scale = Vector3::One;
@@ -391,7 +360,14 @@ void DX11App::Update()
 
     for (Entity entity = 0; entity < MAX_ENTITIES; entity++)
     {
-        m_instanceData[entity].Color = Vector3(0.05f, 0.05f, 0.05f);
+        if (m_scene.DoesEntityExist(entity))
+        {
+            m_instanceData[entity].Color = Vector3(0.05f, 0.05f, 0.05f);
+        }
+        else
+        {
+            m_instanceData[entity] = InstanceData();
+        }
     }
 
     for (const auto [entity1, entity2] : m_aabbTree.GetPotentialIntersections())
@@ -411,11 +387,38 @@ void DX11App::Update()
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 
+    ImGuiIO& io = ImGui::GetIO();
     ImGui::Begin("Entity Editor");
+    if (ImGui::Button("Add Entity"))
+    {
+        if (!m_scene.ReachedEntityCap())
+        {
+            XMFLOAT3 camPos = m_camera->GetPosition();
+            Entity newEntity = m_scene.CreateEntity();
+            m_scene.AddComponent(
+                newEntity,
+                Particle{ Vector3(camPos.x, camPos.y, camPos.z), Vector3::Zero, Vector3::Zero, 0.99f, 1 / 2.0f}
+            );
+
+            m_aabbTree.InsertLeaf(newEntity, AABB::FromPositionScale(Vector3(camPos.x, camPos.y, camPos.z), Vector3::One));
+        }
+    }
+
     if (m_selectedEntity != INVALID_ENTITY)
     {
         ImGui::Text(std::format("The current selected entity has ID: {}", m_selectedEntity).c_str());
-        
+        Particle* particleComponent = m_scene.GetComponent<Particle>(m_selectedEntity);
+
+        ImGui::InputFloat3("Position", &particleComponent->Position.x);
+        ImGui::InputFloat3("Velocity", &particleComponent->Velocity.x);
+        ImGui::InputFloat3("Acceleration", &particleComponent->Acceleration.x);
+
+        if (ImGui::Button("Remove Entity"))
+        {
+            m_scene.DestroyEntity(m_selectedEntity);
+            m_aabbTree.RemoveEntity(m_selectedEntity);
+            m_selectedEntity = INVALID_ENTITY;
+        }
     }
     else
     {
@@ -423,12 +426,13 @@ void DX11App::Update()
     }
     ImGui::End();
 
+    ImGui::Begin("Application Stats");
+    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+    ImGui::Text("Vertices Rendered (Includes ImGui): %d", io.MetricsRenderVertices);
+    ImGui::Text("Entity Count: %d of %d", m_scene.GetEntityCount(), MAX_ENTITIES);
+    ImGui::End();
+
     m_timer.Tick();
-
-    auto stop = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-
-    std::cout << "Frame time: " << duration.count() << "ms" << std::endl;
 }
 
 void DX11App::Draw()
@@ -520,6 +524,9 @@ void DX11App::OnMouseMove(WPARAM btnState, int x, int y)
 
 void DX11App::OnMouseClick(WPARAM pressedBtn, int x, int y)
 {
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureMouse) return;
+
     // check if the left mouse button was the button that was clicked
     if ((pressedBtn & MK_LBUTTON) != 0)
     {
@@ -528,11 +535,6 @@ void DX11App::OnMouseClick(WPARAM pressedBtn, int x, int y)
 
         float intersectDistance;
         Entity entity = m_aabbTree.Intersect(ray, intersectDistance);
-
-        if (entity != INVALID_ENTITY)
-        {
-            std::cout << "Clicked on entity with ID " << entity << " and distance " << intersectDistance << std::endl;
-        }
         
         m_selectedEntity = entity;
     }

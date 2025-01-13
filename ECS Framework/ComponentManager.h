@@ -89,9 +89,10 @@ public:
 	}
 
 	template <typename T>
-	T& GetComponent(Entity entity)
+	T* GetComponent(Entity entity, Signature signature)
 	{
-		return GetComponentArray<T>()->GetComponent(entity);
+		std::shared_ptr<Archetype> archetype = m_archetypes[signature];
+		return archetype->GetComponent<T>(entity);
 	}
 
 	template <typename T>
@@ -116,12 +117,9 @@ public:
 
 	void EntityDestroyed(Entity entity)
 	{
-		for (auto& componentSet : m_componentSets)
+		for (const auto& pair : m_archetypes)
 		{
-			if (componentSet)
-			{
-				componentSet->EntityDestroyed(entity);
-			}
+			pair.second->RemoveEntity(entity);
 		}
 	}
 

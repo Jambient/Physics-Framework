@@ -50,3 +50,13 @@ Signature EntityManager::GetSignature(Entity entity)
 	// Get this entity's signature from the array
 	return m_signatures[entity];
 }
+
+uint32_t EntityManager::GetEntityCount()
+{
+	return m_livingEntityCount;
+}
+
+bool EntityManager::DoesEntityExist(Entity entity)
+{
+	return m_signatures[entity].any();
+}

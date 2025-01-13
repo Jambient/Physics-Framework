@@ -34,6 +34,21 @@ public:
 		m_systemManager->EntityDestroyed(entity);
 	}
 
+	bool DoesEntityExist(Entity entity)
+	{
+		return m_entityManager->DoesEntityExist(entity);
+	}
+
+	uint32_t GetEntityCount()
+	{
+		return m_entityManager->GetEntityCount();
+	}
+
+	bool ReachedEntityCap()
+	{
+		return m_entityManager->GetEntityCount() == MAX_ENTITIES;
+	}
+
 	///////////// VIEW METHODS
 	template <typename... Components>
 	WorldView CreateWorldView()
@@ -89,9 +104,9 @@ public:
 	}
 
 	template <typename T>
-	T& GetComponent(Entity entity)
+	T* GetComponent(Entity entity)
 	{
-		return m_componentManager->GetComponent<T>(entity);
+		return m_componentManager->GetComponent<T>(entity, m_entityManager->GetSignature(entity));
 	}
 
 	template <typename T>

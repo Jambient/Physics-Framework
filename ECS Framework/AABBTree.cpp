@@ -123,6 +123,11 @@ void AABBTree::RemoveLeaf(int leafIndex)
 	DeallocateNode(leafIndex);
 }
 
+void AABBTree::RemoveEntity(Entity entity)
+{
+	RemoveLeaf(m_entityToNodeIndex[entity]);
+}
+
 void AABBTree::Update(Entity entity, const AABB& newBox)
 {
 	int leafIndex = m_entityToNodeIndex[entity];
@@ -133,7 +138,6 @@ void AABBTree::Update(Entity entity, const AABB& newBox)
 	GetNode(leafIndex).box = newBox;
 
 	// check if the leaf node actually needs updating
-	//if (!NeedsUpdate(leafIndex)) { RefitFromNode(GetNode(leafIndex).parentIndex); return; }
 	if (!NeedsUpdate(leafIndex)) { return; }
 
 	RemoveLeaf(leafIndex);

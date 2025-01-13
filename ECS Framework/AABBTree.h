@@ -32,6 +32,7 @@ public:
 
 	void InsertLeaf(Entity entity, AABB box);
 	void RemoveLeaf(int leafIndex);
+	void RemoveEntity(Entity entity);
 
 	void Update(Entity entity, const AABB& newBox);
 
