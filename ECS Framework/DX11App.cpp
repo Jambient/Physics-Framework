@@ -5,6 +5,7 @@
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
+#include "Collision.h"
 #include <iostream>
 #include <stdexcept>
 #include <random>
@@ -213,7 +214,7 @@ HRESULT DX11App::Init()
 
     m_scene.AddComponent(
         entities[0],
-        Particle{ Vector3::Zero, Vector3::Zero, 0.99f, 1 / 2.0f }
+        Particle{ Vector3::Zero, Vector3::Zero, 0.99f, 0.0f }
     );
     m_scene.AddComponent(
         entities[0],
@@ -361,26 +362,27 @@ void DX11App::Update()
         m_instanceData[entity1].Color = Vector3(1.0f, 0.0f, 0.0f);
         m_instanceData[entity2].Color = Vector3(1.0f, 0.0f, 0.0f);
 
-        /*AABB e1Box = m_aabbTree.GetNodeFromEntity(entity1).box;
-        AABB e2Box = m_aabbTree.GetNodeFromEntity(entity2).box;
+        Transform* e1Transform = m_scene.GetComponent<Transform>(entity1);
         Particle* e1Particle = m_scene.GetComponent<Particle>(entity1);
+        Transform* e2Transform = m_scene.GetComponent<Transform>(entity2);
+        Particle* e2Particle = m_scene.GetComponent<Particle>(entity2);
 
-        Vector3 overlap = Vector3::Min(e1Box.upperBound, e2Box.upperBound) - Vector3::Max(e1Box.lowerBound, e2Box.lowerBound);
-        if (overlap.x < overlap.y && overlap.x < overlap.z)
-        {
-            float direction = e1Box.lowerBound.x < e2Box.lowerBound.x ? -1 : 1;
-            e1Particle->Position.x += overlap.x * direction;
-        }
-        else if (overlap.y < overlap.z)
-        {
-            float direction = e1Box.lowerBound.y < e2Box.lowerBound.y ? -1 : 1;
-            e1Particle->Position.y += overlap.y * direction;
-        }
-        else
-        {
-            float direction = e1Box.lowerBound.z < e2Box.lowerBound.z ? -1 : 1;
-            e1Particle->Position.z += overlap.z * direction;
-        }*/
+        CollisionInfo info = Collision::Intersects(AABB::FromPositionScale(e1Transform->Position, e1Transform->Scale), AABB::FromPositionScale(e2Transform->Position, e2Transform->Scale));
+        if (!info) { continue; } // continue if narrow phase check fails
+
+        float resititution = 0.2f; // this should be calculated with the product of the two objects restituions
+
+        Vector3 relativeVelocity = e1Particle->Velocity - e2Particle->Velocity;
+        float collisionVelocity = Vector3::Dot(relativeVelocity * -(1.0f + resititution), info.normal);
+
+        float impulse = collisionVelocity / (e1Particle->inverseMass + e2Particle->inverseMass);
+
+        float totalMass = e1Particle->inverseMass + e2Particle->inverseMass;
+        e1Transform->Position += info.normal * (info.penetrationDepth * e1Particle->inverseMass / totalMass);
+        e2Transform->Position -= info.normal * (info.penetrationDepth * e2Particle->inverseMass / totalMass);
+
+        e1Particle->Velocity += info.normal * (e1Particle->inverseMass * impulse);
+        e2Particle->Velocity -= info.normal * (e2Particle->inverseMass * impulse);
     }
 
     D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -431,6 +433,7 @@ void DX11App::Update()
         ImGui::Text("Particle Component:");
         ImGui::InputFloat3("Velocity", &particleComponent->Velocity.x);
         ImGui::InputFloat3("Acceleration", &particleComponent->Acceleration.x);
+        ImGui::Text("Mass: %.1f", 1.0f / particleComponent->inverseMass);
 
         transformComponent->Rotation = Quaternion::FromEulerAngles(Vector3(XMConvertToRadians(eulerRotation.x), XMConvertToRadians(eulerRotation.y), XMConvertToRadians(eulerRotation.z)));
 

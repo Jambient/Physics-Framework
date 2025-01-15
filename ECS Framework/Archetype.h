@@ -144,7 +144,7 @@ public:
 		std::vector<ComponentData> componentData;
 
 		for (auto& pair : m_componentColumns) {
-			const ComponentData data = { pair.first, pair.second.GetComponent(entity) };
+			const ComponentData data = { pair.first, pair.second.GetComponent(m_entityToDenseIndex[entity]) };
 			componentData.push_back(data);
 		}
 

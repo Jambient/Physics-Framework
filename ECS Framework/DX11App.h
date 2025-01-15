@@ -1,5 +1,5 @@
 #pragma once
-#define NDEBUG
+//#define NDEBUG
 
 #include "DX11Framework.h"
 #include "Structures.h"
