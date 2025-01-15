@@ -35,24 +35,22 @@ struct VS_Out
     float3 color : COLOR;
 };
 
-VS_Out VS_main(float3 Position : POSITION, float3 Normal : NORMAL, float2 TexCoord : TEXCOORD, float4 Tangent : TANGENT, float3 InstancePos : INSTANCE_POSITION, float3 InstanceScale : INSTANCE_SCALE, float3 InstanceColor: INSTANCE_COLOR)
+VS_Out VS_main(float3 Position : POSITION, float3 Normal : NORMAL, float2 TexCoord : TEXCOORD, float4 Tangent : TANGENT)
 {   
     VS_Out output = (VS_Out)0;
     
     float3x3 rotation = (float3x3) World;
-    float3 worldPosition = Position * InstanceScale + InstancePos;
+    float4 position = float4(Position, 1.0f);
     
-    output.position = mul(mul(float4(worldPosition, 1.0f), View), Projection);
+    output.position = mul(mul(mul(position, World), View), Projection);
     
-    output.worldPosition = worldPosition;
+    output.worldPosition = mul(position, World).xyz;
     output.normal = normalize(mul(Normal, rotation));
     
     output.texCoord = TexCoord;
     
     output.tangent = normalize(mul(float4(Tangent.xyz, 0.0f), World).xyz);
     output.bitangent = Tangent.w * cross(output.normal, output.tangent);
-    
-    output.color = InstanceColor;
     
     return output;
 }
@@ -64,7 +62,7 @@ float4 PS_main(VS_Out input) : SV_TARGET
     float3x3 TBN = float3x3(input.tangent, input.bitangent, normal);
     float3 viewDir = normalize(CameraPosition - input.worldPosition);
     
-    float3 finalColor = input.color;
+    float3 finalColor = (float3)AmbientLight;
     
     for (int i = 0; i < LightCount; i++)
     {

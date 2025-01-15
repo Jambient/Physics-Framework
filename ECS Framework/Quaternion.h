@@ -2,6 +2,7 @@
 #define _USE_MATH_DEFINES
 
 #include <math.h>
+#include <array>
 #include "Vector3.h"
 
 // this quaternion class was made with great help from https://www.3dgep.com/understanding-quaternions/ 
@@ -72,24 +73,55 @@ public:
 
 	float* toRotationMatrix() const
 	{
-		float* rotMat = new float[9];
+		std::array<float, 16> rotMat;
 
 		// First row of the rotation matrix
+		//rotMat[0] = 2 * (r * r + i * i) - 1;
+		//rotMat[1] = 2 * (i * j - r * k);
+		//rotMat[2] = 2 * (i * k + r * j);
+		//rotMat[3] = 0;
+
+		//// Second row of the rotation matrix
+		//rotMat[4] = 2 * (i * j + r * k);
+		//rotMat[5] = 2 * (i * i + j * j) - 1;
+		//rotMat[6] = 2 * (j * k - r * i);
+		//rotMat[7] = 0;
+
+		//// Third row of the rotation matrix
+		//rotMat[8] = 2 * (i * k - r * j);
+		//rotMat[9] = 2 * (j * k + r * i);
+		//rotMat[10] = 2 * (r * r + k * k) - 1;
+		//rotMat[11] = 0;
+
+		//rotMat[12] = 0;
+		//rotMat[13] = 0;
+		//rotMat[14] = 0;
+		//rotMat[15] = 1;
+
 		rotMat[0] = 2 * (r * r + i * i) - 1;
 		rotMat[1] = 2 * (i * j - r * k);
 		rotMat[2] = 2 * (i * k + r * j);
+		rotMat[3] = 0;
 
 		// Second row of the rotation matrix
-		rotMat[3] = 2 * (i * j + r * k);
-		rotMat[4] = 2 * (i * i + j * j) - 1;
-		rotMat[5] = 2 * (j * k - r * i);
+		rotMat[4] = 2 * (i * j + r * k);
+		rotMat[5] = 2 * (r * r + j * j) - 1;
+		rotMat[6] = 2 * (j * k - r * i);
+		rotMat[7] = 0;
 
 		// Third row of the rotation matrix
-		rotMat[6] = 2 * (i * k - r * j);
-		rotMat[7] = 2 * (j * k + r * i);
-		rotMat[8] = 2 * (r * r + k * k) - 1;
+		rotMat[8] = 2 * (i * k - r * j);
+		rotMat[9] = 2 * (j * k + r * i);
+		rotMat[10] = 2 * (r * r + k * k) - 1;
+		rotMat[11] = 0;
 
-		return rotMat;
+		// Fourth row (homogeneous coordinates)
+		rotMat[12] = 0;
+		rotMat[13] = 0;
+		rotMat[14] = 0;
+		rotMat[15] = 1;
+
+		return rotMat.data();
 	}
 
 	// operator overrides
@@ -121,6 +153,13 @@ public:
             r * other.j + other.r * j + k * other.i - other.k * i,
             r * other.k + other.r * k + i * other.j - other.i * j
         );
+	}
+
+	Vector3 operator*(const Vector3& v) const
+	{
+		Quaternion vectorQuat(0, v.x, v.y, v.z);
+		Quaternion result = (*this) * vectorQuat * this->conjugate();
+		return Vector3(result.i, result.j, result.k);
 	}
 
 	void operator*=(float scalar)
@@ -203,17 +242,24 @@ public:
 
 	static Quaternion Slerp(Quaternion& a, Quaternion& b, float t)
 	{
+		a.normalize();
+		b.normalize();
+
 		float angle = Angle(a, b);
 		float sinAngle = sin(angle);
 
 		// this stops divide by zero errors for small angles
-		if (sinAngle == 0.0f) { return Lerp(a, b, t); }
+		if (fabsf(sinAngle) < 1e-6f) { return Lerp(a, b, t); }
 
 		// this stops the interpolation travelling the "long-way" around the 4D sphere in some cases
 		float dot = Dot(a, b);
 		Quaternion adjustedA = dot < 0 ? -a : a;
 
-		return adjustedA * ((sin(1 - t) * angle) / sinAngle) + b * (sin(t * angle) / sinAngle);
+		float factorA = sin((1.0f - t) * angle) / sinAngle;
+		float factorB = sin(t * angle) / sinAngle;
+
+		// Perform the spherical linear interpolation
+		return adjustedA * factorA + b * factorB;
 	}
 
 	// code from https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles.

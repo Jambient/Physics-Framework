@@ -1,5 +1,6 @@
 #pragma once
 #include "Vector3.h"
+#include "Quaternion.h"
 
 struct Particle
 {
@@ -17,6 +18,11 @@ struct Particle
 
 	// Holds the inverse of the mass of the particle.
 	float inverseMass;
+};
+
+struct TestRotation
+{
+	Quaternion rotation;
 };
 
 struct SphereCollider

@@ -6,10 +6,38 @@
 #include <memory>
 #include "Definitions.h"
 #include "Vector3.h"
+#include "Quaternion.h"
 
 using namespace DirectX;
 
 #define MAX_LIGHTS 10
+
+struct OBB
+{
+	Vector3 vertices[8];
+	Vector3 right;
+	Vector3 up;
+	Vector3 forward;
+
+	OBB(Vector3 center, Vector3 size, Quaternion rotation)
+	{
+		Vector3 max = size * 0.5f;
+		Vector3 min = -max;
+
+		vertices[0] = center + rotation * min;
+		vertices[1] = center + rotation * Vector3(max.x, min.y, min.z);
+		vertices[2] = center + rotation * Vector3(min.x, max.y, min.z);
+		vertices[3] = center + rotation * Vector3(max.x, max.y, min.z);
+		vertices[4] = center + rotation * Vector3(min.x, min.y, max.z);
+		vertices[5] = center + rotation * Vector3(max.x, min.y, max.z);
+		vertices[6] = center + rotation * Vector3(min.x, max.y, max.z);
+		vertices[7] = center + rotation * max;
+
+		right = rotation * Vector3::Right;
+		up = rotation * Vector3::Up;
+		forward = rotation * Vector3::Forward;
+	}
+};
 
 enum class DrawPass
 {

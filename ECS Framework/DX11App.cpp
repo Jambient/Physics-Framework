@@ -102,7 +102,7 @@ HRESULT DX11App::Init()
 
         { "INSTANCE_POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
         { "INSTANCE_SCALE", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
-        { "INSTANCE_COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+        { "INSTANCE_COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_INSTANCE_DATA, 1 }
     };
 
     // get an instance of the shader manager and initialize it
@@ -166,7 +166,6 @@ HRESULT DX11App::Init()
     m_scene.RegisterComponent<Gravity>();
     m_scene.RegisterComponent<RigidBody>();
     m_scene.RegisterComponent<Transform>();
-    m_scene.RegisterComponent<RandomComponent>();
 
     m_physicsSystem = m_scene.RegisterSystem<PhysicsSystem>();
     m_physicsSystem->m_scene = &m_scene;
@@ -228,6 +227,10 @@ HRESULT DX11App::Init()
         entities[0],
         Particle{ Vector3::Left, Vector3::Zero, Vector3::Zero, 0.99f, 1 / 2.0f}
     );
+    /*m_scene.AddComponent(
+        entities[0],
+        TestRotation{ Quaternion::FromEulerAngles(Vector3(XMConvertToRadians(45), 0.0f, 0.0f)) }
+    );*/
     m_aabbTree.InsertLeaf(entities[0], AABB::FromPositionScale(Vector3::Left, Vector3::One));
 
     entities[1] = m_scene.CreateEntity();
@@ -235,10 +238,10 @@ HRESULT DX11App::Init()
         entities[1],
         Particle{ Vector3::Right, Vector3::Zero, Vector3::Zero, 0.99f, 1 / 2.0f }
     );
-    m_scene.AddComponent(
+    /*m_scene.AddComponent(
         entities[1],
-        RandomComponent{ 0.05f }
-    );
+        TestRotation{ Quaternion::FromEulerAngles(Vector3(XMConvertToRadians(45), 0.0f, 0.0f)) }
+    );*/
     m_aabbTree.InsertLeaf(entities[1], AABB::FromPositionScale(Vector3::Right, Vector3::One));
 
     //for (Entity entity : entities)
@@ -481,48 +484,65 @@ void DX11App::Draw()
     sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", m_transformBufferData);
     sm->SetConstantBuffer<GlobalBuffer>("GlobalBuffer", m_globalBufferData);
 
+    TransformBuffer transformData;
+    sm->GetConstantBufferData<TransformBuffer>("TransformBuffer", transformData);
+
     // set the bilienar sampler state as the default sampler for shaders
     m_immediateContext->PSSetSamplers(0, 1, &m_defaultSamplerState);
 
     sm->SetActiveShader("SimpleShaders");
 
-    // draw cube
-    UINT strides[] = { m_cubeMeshData.VBStride, sizeof(InstanceData) };
-    UINT offsets[] = { m_cubeMeshData.VBOffset, 0 };
-    ID3D11Buffer* buffers[] = { m_cubeMeshData.VertexBuffer, m_instanceBuffer };
+    Particle* particle = m_scene.GetComponent<Particle>(0);
 
-    m_immediateContext->IASetVertexBuffers(0, 2, buffers, strides, offsets);
+    Quaternion qA = Quaternion::AngleAxis(XMConvertToRadians(45.0f), Vector3::Left);
+    Quaternion qB = Quaternion::FromEulerAngles(Vector3(0.0f, XMConvertToRadians(45.0f), 0.0f));
+    Quaternion testQ = Quaternion::Slerp(qA, qB, m_timer.GetElapsedTime() / 10.0);
+    XMMATRIX transform = XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMATRIX(testQ.toRotationMatrix()) * XMMatrixTranslation(particle->Position.x, particle->Position.y, particle->Position.z);
+    transformData.World = XMMatrixTranspose(transform);
+    sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
+
+    UINT stride = m_cubeMeshData.VBStride;
+    UINT offset = m_cubeMeshData.VBOffset;
+
+    m_immediateContext->IASetVertexBuffers(0, 1, &m_cubeMeshData.VertexBuffer, &stride, &offset);
     m_immediateContext->IASetIndexBuffer(m_cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
-    m_immediateContext->DrawInstanced(m_cubeMeshData.VerticesCount, MAX_ENTITIES, 0, 0);
+    m_immediateContext->DrawIndexed(m_cubeMeshData.IndexCount, 0, 0);
+
+    //// draw cube
+    //UINT strides[] = { m_cubeMeshData.VBStride, sizeof(InstanceData) };
+    //UINT offsets[] = { m_cubeMeshData.VBOffset, 0 };
+    //ID3D11Buffer* buffers[] = { m_cubeMeshData.VertexBuffer, m_instanceBuffer };
+
+    //m_immediateContext->IASetVertexBuffers(0, 2, buffers, strides, offsets);
+    //m_immediateContext->IASetIndexBuffer(m_cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+
+    //m_immediateContext->DrawInstanced(m_cubeMeshData.VerticesCount, MAX_ENTITIES, 0, 0);
 
     sm->SetActiveShader("DebugBoxShaders");
     m_immediateContext->RSSetState(m_wireframeRasterizerState);
 
-    TransformBuffer transformData;
-    sm->GetConstantBufferData<TransformBuffer>("TransformBuffer", transformData);
+    for (const Node& node : m_aabbTree.GetNodes())
+    {
+        if (true)// m_aabbTree.GetNode(node.child1).isLeaf || m_aabbTree.GetNode(node.child2).isLeaf)
+        {
+            Vector3 boxPos = node.box.getPosition();
+            Vector3 boxSize = node.box.getSize();
 
-    //for (const Node& node : m_aabbTree.GetNodes())
-    //{
-    //    if (true)// m_aabbTree.GetNode(node.child1).isLeaf || m_aabbTree.GetNode(node.child2).isLeaf)
-    //    {
-    //        Vector3 boxPos = node.box.getPosition();
-    //        Vector3 boxSize = node.box.getSize();
+            XMMATRIX transform = XMMatrixScaling(boxSize.x, boxSize.y, boxSize.z) * XMMatrixTranslation(boxPos.x, boxPos.y, boxPos.z);
 
-    //        XMMATRIX transform = XMMatrixScaling(boxSize.x, boxSize.y, boxSize.z) * XMMatrixTranslation(boxPos.x, boxPos.y, boxPos.z);
+            transformData.World = XMMatrixTranspose(transform);
+            sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
 
-    //        transformData.World = XMMatrixTranspose(transform);
-    //        sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
+            UINT stride = m_cubeMeshData.VBStride;
+            UINT offset = m_cubeMeshData.VBOffset;
 
-    //        UINT stride = m_cubeMeshData.VBStride;
-    //        UINT offset = m_cubeMeshData.VBOffset;
+            m_immediateContext->IASetVertexBuffers(0, 1, &m_cubeMeshData.VertexBuffer, &stride, &offset);
+            m_immediateContext->IASetIndexBuffer(m_cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
-    //        m_immediateContext->IASetVertexBuffers(0, 1, &m_cubeMeshData.VertexBuffer, &stride, &offset);
-    //        m_immediateContext->IASetIndexBuffer(m_cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
-
-    //        m_immediateContext->DrawIndexed(m_cubeMeshData.IndexCount, 0, 0);
-    //    }
-    //}
+            m_immediateContext->DrawIndexed(m_cubeMeshData.IndexCount, 0, 0);
+        }
+    }
 
     // draw imgui
     ImGui::Render();

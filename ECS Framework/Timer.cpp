@@ -2,6 +2,7 @@
 
 Timer::Timer()
 {
+	startTime = steady_clock::now();
 	Tick();
 }
 
