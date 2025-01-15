@@ -2,11 +2,15 @@
 #include "Vector3.h"
 #include "Quaternion.h"
 
+struct Transform
+{
+	Vector3 Position = Vector3::Zero;
+	Quaternion Rotation;
+	Vector3 Scale = Vector3::Zero;
+};
+
 struct Particle
 {
-	// Holds the linear positon of the particle in world space.
-	Vector3 Position = Vector3::Zero;
-
 	// Holds the linear velocity of the particle in world space.
 	Vector3 Velocity = Vector3::Zero;
 
@@ -20,31 +24,8 @@ struct Particle
 	float inverseMass;
 };
 
-struct TestRotation
-{
-	Quaternion rotation;
-};
-
 struct SphereCollider
 {
 	Vector3 center;
 	float radius;
-};
-
-struct Transform
-{
-	Vector3 Position = Vector3::Zero;
-	Vector3 Rotation = Vector3::Zero;
-	Vector3 Scale = Vector3::One;
-};
-
-struct Gravity
-{
-	Vector3 Force = Vector3::Zero;
-};
-
-struct RigidBody
-{
-	Vector3 Velocity = Vector3::Zero;
-	Vector3 Acceleration = Vector3::Zero;
 };

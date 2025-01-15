@@ -13,6 +13,11 @@
 class Quaternion
 {
 public:
+	float r;
+	float i;
+	float j;
+	float k;
+
 	Quaternion() : r(1.0f), i(0.0f), j(0.0f), k(0.0f) {};
 	Quaternion(float r, float i, float j, float k) : r(r), i(i), j(j), k(k) {};
 
@@ -302,11 +307,5 @@ public:
 		Vector3 rotAxis = Vector3::Cross(fromDirection, toDirection);
 		return Quaternion::AngleAxis(rotAngle, rotAxis);
 	}
-
-private:
-	float r;
-	float i;
-	float j;
-	float k;
 };
 

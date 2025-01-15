@@ -80,16 +80,6 @@ struct Column
 	}
 };
 
-template <typename...Ts>
-struct foo {
-	static const size_t N = sizeof...(Ts);
-	template <size_t ... I>
-	static auto helper(std::integer_sequence<size_t, I...>) {
-		return std::tuple<std::array<Ts, I>...>{};
-	}
-	using type = decltype(helper(std::make_integer_sequence<size_t, N>{}));
-};
-
 class Archetype
 {
 public:

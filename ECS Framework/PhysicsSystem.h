@@ -14,7 +14,7 @@ public:
 		//});
 
 		// integrate particles
-		m_scene->ForEach<Particle>([dt](Entity entity, Particle* particle)
+		m_scene->ForEach<Particle, Transform>([dt](Entity entity, Particle* particle, Transform* transform)
 			{
 				// dont integrate things with infinite mass
 				if (particle->inverseMass <= 0.0f) return;
@@ -22,7 +22,7 @@ public:
 				assert(dt > 0.0);
 
 				// update linear position
-				particle->Position += particle->Velocity * dt;
+				transform->Position += particle->Velocity * dt;
 
 				// work out the accelerate from the force.
 				Vector3 resultingAcc = particle->Acceleration;

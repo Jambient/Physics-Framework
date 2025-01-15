@@ -163,40 +163,16 @@ HRESULT DX11App::Init()
     m_scene.Init();
 
     m_scene.RegisterComponent<Particle>();
-    m_scene.RegisterComponent<Gravity>();
-    m_scene.RegisterComponent<RigidBody>();
     m_scene.RegisterComponent<Transform>();
 
     m_physicsSystem = m_scene.RegisterSystem<PhysicsSystem>();
     m_physicsSystem->m_scene = &m_scene;
 
-    /*Entity e1 = m_scene.CreateEntity();
-    m_scene.AddComponent(e1, Gravity{ Vector3::Down * 9.8f });
-    m_scene.AddComponent(e1, RigidBody{ Vector3::One, Vector3::One });
-    m_scene.AddComponent(e1, Transform{ Vector3::Left, Vector3::Zero, Vector3::Right });*/
-
     Signature objectSignature;
-    objectSignature.set(m_scene.GetComponentType<Gravity>());
-    objectSignature.set(m_scene.GetComponentType<RigidBody>());
     objectSignature.set(m_scene.GetComponentType<Transform>());
     m_scene.SetSystemSignature<PhysicsSystem>(objectSignature);
 
     std::vector<Entity> entities(MAX_ENTITIES);
-
-    /*std::default_random_engine generator;
-    std::uniform_real_distribution<float> velocityAxisOffset(-1.0f, 1.0f);
-
-    for (Entity entity : entities)
-    {
-        entity = m_scene.CreateEntity();
-
-        Vector3 velocity = Vector3(velocityAxisOffset(generator), 5.0f, velocityAxisOffset(generator)).normalized() * 5.0f;
-
-        m_scene.AddComponent(
-            entity,
-            Particle{ Vector3::Zero, velocity, Vector3::Down * 9.8f, 0.99f, 1 / 2.0f }
-        );
-    }*/
 
     std::default_random_engine generator;
     std::uniform_real_distribution<float> randPosition(-30.0f, 30.0f);
@@ -223,26 +199,27 @@ HRESULT DX11App::Init()
     m_aabbTree.PrintTree(m_aabbTree.GetRootIndex());*/
 
     entities[0] = m_scene.CreateEntity();
-    m_scene.AddComponent(
-        entities[0],
-        Particle{ Vector3::Left, Vector3::Zero, Vector3::Zero, 0.99f, 1 / 2.0f}
-    );
-    /*m_scene.AddComponent(
-        entities[0],
-        TestRotation{ Quaternion::FromEulerAngles(Vector3(XMConvertToRadians(45), 0.0f, 0.0f)) }
-    );*/
-    m_aabbTree.InsertLeaf(entities[0], AABB::FromPositionScale(Vector3::Left, Vector3::One));
-
     entities[1] = m_scene.CreateEntity();
+
     m_scene.AddComponent(
         entities[1],
-        Particle{ Vector3::Right, Vector3::Zero, Vector3::Zero, 0.99f, 1 / 2.0f }
+        Particle{ Vector3::Zero, Vector3::Zero, 0.99f, 1 / 2.0f}
     );
-    /*m_scene.AddComponent(
+    m_scene.AddComponent(
         entities[1],
-        TestRotation{ Quaternion::FromEulerAngles(Vector3(XMConvertToRadians(45), 0.0f, 0.0f)) }
-    );*/
-    m_aabbTree.InsertLeaf(entities[1], AABB::FromPositionScale(Vector3::Right, Vector3::One));
+        Transform{ Vector3::Left, Quaternion(), Vector3(1.0f, 1.0f, 1.0f) }
+    );
+    m_aabbTree.InsertLeaf(entities[1], AABB::FromPositionScale(Vector3::Left, Vector3::One));
+
+    m_scene.AddComponent(
+        entities[0],
+        Particle{ Vector3::Zero, Vector3::Zero, 0.99f, 1 / 2.0f }
+    );
+    m_scene.AddComponent(
+        entities[0],
+        Transform{ Vector3::Right, Quaternion(), Vector3(1.0f, 1.0f, 1.0f) }
+    );
+    m_aabbTree.InsertLeaf(entities[0], AABB::FromPositionScale(Vector3::Right, Vector3::One));
 
     //for (Entity entity : entities)
     //{
@@ -355,15 +332,14 @@ void DX11App::Update()
         m_physicsSystem->Update(FPS60);
         m_physicsAccumulator -= FPS60;
 
-        //std::cout << "Deepest Tree Level: " << m_aabbTree.GetDeepestLevel() << std::endl;
         // also need to have individual elapsed time for system
     }
 
-    m_scene.ForEach<Particle>([&](Entity entity, Particle* particle) {
-        m_instanceData[entity].Position = particle->Position;
-        m_instanceData[entity].Scale = Vector3::One;
+    m_scene.ForEach<Transform>([&](Entity entity, Transform* transform) {
+        m_instanceData[entity].Position = transform->Position;
+        m_instanceData[entity].Scale = transform->Scale;
 
-        m_aabbTree.Update(entity, AABB::FromPositionScale(particle->Position, Vector3::One));
+        m_aabbTree.Update(entity, AABB::FromPositionScale(transform->Position, transform->Scale));
     });
 
     for (Entity entity = 0; entity < MAX_ENTITIES; entity++)
@@ -428,7 +404,11 @@ void DX11App::Update()
             Entity newEntity = m_scene.CreateEntity();
             m_scene.AddComponent(
                 newEntity,
-                Particle{ Vector3(camPos.x, camPos.y, camPos.z), Vector3::Zero, Vector3::Zero, 0.99f, 1 / 2.0f}
+                Particle{ Vector3::Zero, Vector3::Zero, 0.99f, 1 / 2.0f}
+            );
+            m_scene.AddComponent(
+                newEntity,
+                Transform{ Vector3(camPos.x, camPos.y, camPos.z), Quaternion(), Vector3(1.0f, 1.0f, 1.0f) }
             );
 
             m_aabbTree.InsertLeaf(newEntity, AABB::FromPositionScale(Vector3(camPos.x, camPos.y, camPos.z), Vector3::One));
@@ -438,11 +418,21 @@ void DX11App::Update()
     if (m_selectedEntity != INVALID_ENTITY)
     {
         ImGui::Text(std::format("The current selected entity has ID: {}", m_selectedEntity).c_str());
+        Transform* transformComponent = m_scene.GetComponent<Transform>(m_selectedEntity);
         Particle* particleComponent = m_scene.GetComponent<Particle>(m_selectedEntity);
+        Vector3 eulerRotation = transformComponent->Rotation.toEulerAngles();
+        eulerRotation = Vector3(XMConvertToDegrees(eulerRotation.x), XMConvertToDegrees(eulerRotation.y), XMConvertToDegrees(eulerRotation.z));
 
-        ImGui::InputFloat3("Position", &particleComponent->Position.x);
+        ImGui::Text("Transform Component:");
+        ImGui::InputFloat3("Position", &transformComponent->Position.x);
+        ImGui::InputFloat3("Rotation", &eulerRotation.x);
+        ImGui::InputFloat3("Scale", &transformComponent->Scale.x);
+
+        ImGui::Text("Particle Component:");
         ImGui::InputFloat3("Velocity", &particleComponent->Velocity.x);
         ImGui::InputFloat3("Acceleration", &particleComponent->Acceleration.x);
+
+        transformComponent->Rotation = Quaternion::FromEulerAngles(Vector3(XMConvertToRadians(eulerRotation.x), XMConvertToRadians(eulerRotation.y), XMConvertToRadians(eulerRotation.z)));
 
         if (ImGui::Button("Remove Entity"))
         {
@@ -492,22 +482,26 @@ void DX11App::Draw()
 
     sm->SetActiveShader("SimpleShaders");
 
-    Particle* particle = m_scene.GetComponent<Particle>(0);
+    /*Particle* particle = m_scene.GetComponent<Particle>(0);
 
     Quaternion qA = Quaternion::AngleAxis(XMConvertToRadians(45.0f), Vector3::Left);
     Quaternion qB = Quaternion::FromEulerAngles(Vector3(0.0f, XMConvertToRadians(45.0f), 0.0f));
     Quaternion testQ = Quaternion::Slerp(qA, qB, m_timer.GetElapsedTime() / 10.0);
-    XMMATRIX transform = XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMATRIX(testQ.toRotationMatrix()) * XMMatrixTranslation(particle->Position.x, particle->Position.y, particle->Position.z);
-    transformData.World = XMMatrixTranspose(transform);
-    sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
+    XMMATRIX transform = XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMATRIX(testQ.toRotationMatrix()) * XMMatrixTranslation(particle->Position.x, particle->Position.y, particle->Position.z);*/
 
-    UINT stride = m_cubeMeshData.VBStride;
-    UINT offset = m_cubeMeshData.VBOffset;
+    m_scene.ForEach<Transform>([&](Entity entity, Transform* transform) {
+        XMMATRIX matrixTransform = XMMatrixScaling(transform->Scale.x, transform->Scale.y, transform->Scale.z) * XMMATRIX(transform->Rotation.toRotationMatrix()) * XMMatrixTranslation(transform->Position.x, transform->Position.y, transform->Position.z);
+        transformData.World = XMMatrixTranspose(matrixTransform);
+        sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
 
-    m_immediateContext->IASetVertexBuffers(0, 1, &m_cubeMeshData.VertexBuffer, &stride, &offset);
-    m_immediateContext->IASetIndexBuffer(m_cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+        UINT stride = m_cubeMeshData.VBStride;
+        UINT offset = m_cubeMeshData.VBOffset;
 
-    m_immediateContext->DrawIndexed(m_cubeMeshData.IndexCount, 0, 0);
+        m_immediateContext->IASetVertexBuffers(0, 1, &m_cubeMeshData.VertexBuffer, &stride, &offset);
+        m_immediateContext->IASetIndexBuffer(m_cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+
+        m_immediateContext->DrawIndexed(m_cubeMeshData.IndexCount, 0, 0);
+    });
 
     //// draw cube
     //UINT strides[] = { m_cubeMeshData.VBStride, sizeof(InstanceData) };
