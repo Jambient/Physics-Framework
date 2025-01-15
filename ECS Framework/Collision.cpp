@@ -47,6 +47,35 @@ bool Collision::Intersects(const SphereCollider& c1, const SphereCollider& c2)
     return (c1.center - c2.center).sqrMagnitude() < combinedRadii * combinedRadii;
 }
 
+bool OBBSeparated(const OBB& a, const OBB& b, Vector3 axis)
+{
+    // Handles the cross product = {0,0,0} case
+    if (axis == Vector3::Zero)
+        return false;
+
+    float aMin = FLT_MAX;
+    float aMax = FLT_MIN;
+    float bMin = FLT_MAX;
+    float bMax = FLT_MIN;
+
+    // Define two intervals, a and b. Calculate their min and max values
+    for (int i = 0; i < 8; i++)
+    {
+        float aDist = Vector3::Dot(a.vertices[i], axis);
+        aMin = aDist < aMin ? aDist : aMin;
+        aMax = aDist > aMax ? aDist : aMax;
+        float bDist = Vector3::Dot(a.vertices[i], axis);
+        bMin = bDist < bMin ? bDist : bMin;
+        bMax = bDist > bMax ? bDist : bMax;
+    }
+
+    // One-dimensional intersection test between a and b
+    float longSpan = max(aMax, bMax) - min(aMin, bMin);
+    float sumSpan = aMax - aMin + bMax - bMin;
+    return longSpan >= sumSpan; // > to treat touching as intersection
+}
+
+
 bool Collision::Intersects(const OBB& c1, const OBB& c2)
 {
     if (OBBSeparated(c1, c2, c1.right))
@@ -85,32 +114,4 @@ bool Collision::Intersects(const OBB& c1, const OBB& c2)
         return false;
 
     return true;
-}
-
-bool OBBSeparated(const OBB& a, const OBB& b, Vector3 axis)
-{
-    // Handles the cross product = {0,0,0} case
-    if (axis == Vector3::Zero)
-        return false;
-
-    float aMin = FLT_MAX;
-    float aMax = FLT_MIN;
-    float bMin = FLT_MAX;
-    float bMax = FLT_MIN;
-
-    // Define two intervals, a and b. Calculate their min and max values
-    for (int i = 0; i < 8; i++)
-    {
-        float aDist = Vector3::Dot(a.vertices[i], axis);
-        aMin = aDist < aMin ? aDist : aMin;
-        aMax = aDist > aMax ? aDist : aMax;
-        float bDist = Vector3::Dot(a.vertices[i], axis);
-        bMin = bDist < bMin ? bDist : bMin;
-        bMax = bDist > bMax ? bDist : bMax;
-    }
-
-    // One-dimensional intersection test between a and b
-    float longSpan = max(aMax, bMax) - min(aMin, bMin);
-    float sumSpan = aMax - aMin + bMax - bMin;
-    return longSpan >= sumSpan; // > to treat touching as intersection
 }
