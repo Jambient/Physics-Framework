@@ -19,6 +19,8 @@ public:
 
 	bool DoesEntityExist(Entity entity);
 
+	bool HasComponent(Entity entity, ComponentType componentType);
+
 private:
 	std::queue<Entity> m_availableEntities;
 	std::array<Signature, MAX_ENTITIES> m_signatures;

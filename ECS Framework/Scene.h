@@ -49,6 +49,12 @@ public:
 		return m_entityManager->GetEntityCount() == MAX_ENTITIES;
 	}
 
+	template <typename T>
+	bool HasComponent(Entity entity)
+	{
+		return m_entityManager->HasComponent(entity, GetComponentType<T>());
+	}
+
 	///////////// VIEW METHODS
 	template <typename... Components>
 	WorldView CreateWorldView()

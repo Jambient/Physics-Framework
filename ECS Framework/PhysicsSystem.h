@@ -22,16 +22,38 @@ public:
 				assert(dt > 0.0);
 
 				// update linear position
-				transform->Position += particle->Velocity * dt;
+				transform->Position += particle->LinearVelocity * dt;
 
 				// work out the accelerate from the force.
-				Vector3 resultingAcc = particle->Acceleration;
+				Vector3 resultingAcc = particle->LinearAcceleration;
 
 				// update linear velocity from the acceleration
-				particle->Velocity += resultingAcc * dt;
+				particle->LinearVelocity += resultingAcc * dt;
 
 				// impose drag
-				particle->Velocity *= std::powf(particle->damping, dt);
+				particle->LinearVelocity *= std::powf(particle->damping, dt);
+			});
+
+		m_scene->ForEach<Particle, RigidBody, Transform>([dt](Entity entity, Particle* particle, RigidBody* rigidBody, Transform* transform)
+			{
+				// dont integrate things with infinite mass
+				if (particle->inverseMass <= 0.0f) return;
+
+				assert(dt > 0.0);
+
+				// update linear position
+				Quaternion q = Quaternion::FromEulerAngles(rigidBody->AngularVelocity);
+				transform->Rotation *= q;
+				//transform->Rotation += transform->Rotation * rigidBody->AngularVelocity * dt * 0.5f;
+
+				// work out the accelerate from the force.
+				Vector3 resultingAcc = rigidBody->AngularAcceleration;
+
+				// update linear velocity from the acceleration
+				rigidBody->AngularVelocity += resultingAcc * dt;
+
+				// impose drag
+				rigidBody->AngularVelocity *= std::powf(particle->damping, dt);
 			});
 
 		//std::vector<Transform>& transformComponents = m_scene->GetAllComponents<Transform>();

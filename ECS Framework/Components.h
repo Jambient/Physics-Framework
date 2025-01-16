@@ -12,16 +12,27 @@ struct Transform
 struct Particle
 {
 	// Holds the linear velocity of the particle in world space.
-	Vector3 Velocity = Vector3::Zero;
+	Vector3 LinearVelocity = Vector3::Zero;
 
 	// Holds the acceleration of the particle.
-	Vector3 Acceleration = Vector3::Zero;
+	Vector3 LinearAcceleration = Vector3::Zero;
 
 	// Holds the amount of damping applied to linear motion.
 	float damping;
 
 	// Holds the inverse of the mass of the particle.
 	float inverseMass;
+
+	float restitution;
+};
+
+struct RigidBody
+{
+	Vector3 AngularVelocity = Vector3::Zero;
+
+	Vector3 AngularAcceleration = Vector3::Zero;
+
+	Vector3 inverseInertiaTensor = Vector3::Zero;
 };
 
 struct SphereCollider

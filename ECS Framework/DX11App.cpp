@@ -165,6 +165,7 @@ HRESULT DX11App::Init()
 
     m_scene.RegisterComponent<Particle>();
     m_scene.RegisterComponent<Transform>();
+    m_scene.RegisterComponent<RigidBody>();
 
     m_physicsSystem = m_scene.RegisterSystem<PhysicsSystem>();
     m_physicsSystem->m_scene = &m_scene;
@@ -202,6 +203,12 @@ HRESULT DX11App::Init()
     entities[0] = m_scene.CreateEntity();
     entities[1] = m_scene.CreateEntity();
 
+    Vector3 cube1InertiaTensor = Vector3(
+        (1.0f / 12.0f) * (1.0f + 1.0f),
+        (1.0f / 12.0f) * (1.0f + 1.0f),
+        (1.0f / 12.0f) * (1.0f + 1.0f)
+    );
+
     m_scene.AddComponent(
         entities[1],
         Particle{ Vector3::Zero, Vector3::Zero, 0.99f, 1 / 2.0f}
@@ -209,6 +216,10 @@ HRESULT DX11App::Init()
     m_scene.AddComponent(
         entities[1],
         Transform{ Vector3::Left, Quaternion(), Vector3(1.0f, 1.0f, 1.0f) }
+    );
+    m_scene.AddComponent(
+        entities[1],
+        RigidBody{ Vector3::Zero, Vector3::Zero, cube1InertiaTensor * 2.0f}
     );
     m_aabbTree.InsertLeaf(entities[1], AABB::FromPositionScale(Vector3::Left, Vector3::One));
 
@@ -219,6 +230,10 @@ HRESULT DX11App::Init()
     m_scene.AddComponent(
         entities[0],
         Transform{ Vector3::Right, Quaternion(), Vector3(1.0f, 1.0f, 1.0f) }
+    );
+    m_scene.AddComponent(
+        entities[0],
+        RigidBody{ Vector3::Zero, Vector3::Zero, cube1InertiaTensor * 0.0f }
     );
     m_aabbTree.InsertLeaf(entities[0], AABB::FromPositionScale(Vector3::Right, Vector3::One));
 
@@ -372,7 +387,7 @@ void DX11App::Update()
 
         float resititution = 0.2f; // this should be calculated with the product of the two objects restituions
 
-        Vector3 relativeVelocity = e1Particle->Velocity - e2Particle->Velocity;
+        Vector3 relativeVelocity = e1Particle->LinearVelocity - e2Particle->LinearVelocity;
         float collisionVelocity = Vector3::Dot(relativeVelocity * -(1.0f + resititution), info.normal);
 
         float impulse = collisionVelocity / (e1Particle->inverseMass + e2Particle->inverseMass);
@@ -381,8 +396,8 @@ void DX11App::Update()
         e1Transform->Position += info.normal * (info.penetrationDepth * e1Particle->inverseMass / totalMass);
         e2Transform->Position -= info.normal * (info.penetrationDepth * e2Particle->inverseMass / totalMass);
 
-        e1Particle->Velocity += info.normal * (e1Particle->inverseMass * impulse);
-        e2Particle->Velocity -= info.normal * (e2Particle->inverseMass * impulse);
+        e1Particle->LinearVelocity += info.normal * (e1Particle->inverseMass * impulse);
+        e2Particle->LinearVelocity -= info.normal * (e2Particle->inverseMass * impulse);
     }
 
     D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -413,6 +428,16 @@ void DX11App::Update()
                 Transform{ Vector3(camPos.x, camPos.y, camPos.z), Quaternion(), Vector3(1.0f, 1.0f, 1.0f) }
             );
 
+            Vector3 cube1InertiaTensor = Vector3(
+                (1.0f / 12.0f) * (1.0f + 1.0f),
+                (1.0f / 12.0f) * (1.0f + 1.0f),
+                (1.0f / 12.0f) * (1.0f + 1.0f)
+            );
+            m_scene.AddComponent(
+                newEntity,
+                RigidBody{ Vector3::Zero, Vector3::Zero, cube1InertiaTensor * 2.0f }
+            );
+
             m_aabbTree.InsertLeaf(newEntity, AABB::FromPositionScale(Vector3(camPos.x, camPos.y, camPos.z), Vector3::One));
         }
     }
@@ -420,22 +445,38 @@ void DX11App::Update()
     if (m_selectedEntity != INVALID_ENTITY)
     {
         ImGui::Text(std::format("The current selected entity has ID: {}", m_selectedEntity).c_str());
-        Transform* transformComponent = m_scene.GetComponent<Transform>(m_selectedEntity);
-        Particle* particleComponent = m_scene.GetComponent<Particle>(m_selectedEntity);
-        Vector3 eulerRotation = transformComponent->Rotation.toEulerAngles();
-        eulerRotation = Vector3(XMConvertToDegrees(eulerRotation.x), XMConvertToDegrees(eulerRotation.y), XMConvertToDegrees(eulerRotation.z));
 
-        ImGui::Text("Transform Component:");
-        ImGui::InputFloat3("Position", &transformComponent->Position.x);
-        ImGui::InputFloat3("Rotation", &eulerRotation.x);
-        ImGui::InputFloat3("Scale", &transformComponent->Scale.x);
+        if (m_scene.HasComponent<Transform>(m_selectedEntity))
+        {
+            Transform* transformComponent = m_scene.GetComponent<Transform>(m_selectedEntity);
+            Vector3 eulerRotation = transformComponent->Rotation.toEulerAngles();
+            eulerRotation = Vector3(XMConvertToDegrees(eulerRotation.x), XMConvertToDegrees(eulerRotation.y), XMConvertToDegrees(eulerRotation.z));
 
-        ImGui::Text("Particle Component:");
-        ImGui::InputFloat3("Velocity", &particleComponent->Velocity.x);
-        ImGui::InputFloat3("Acceleration", &particleComponent->Acceleration.x);
-        ImGui::Text("Mass: %.1f", 1.0f / particleComponent->inverseMass);
+            ImGui::Text("Transform Component:");
+            ImGui::InputFloat3("Position", &transformComponent->Position.x);
+            ImGui::InputFloat3("Rotation", &eulerRotation.x);
+            ImGui::InputFloat3("Scale", &transformComponent->Scale.x);
 
-        transformComponent->Rotation = Quaternion::FromEulerAngles(Vector3(XMConvertToRadians(eulerRotation.x), XMConvertToRadians(eulerRotation.y), XMConvertToRadians(eulerRotation.z)));
+            transformComponent->Rotation = Quaternion::FromEulerAngles(Vector3(XMConvertToRadians(eulerRotation.x), XMConvertToRadians(eulerRotation.y), XMConvertToRadians(eulerRotation.z)));
+        }
+
+        if (m_scene.HasComponent<Particle>(m_selectedEntity))
+        {
+            Particle* particleComponent = m_scene.GetComponent<Particle>(m_selectedEntity);
+
+            ImGui::Text("Particle Component:");
+            ImGui::InputFloat3("LinearVelocity", &particleComponent->LinearVelocity.x);
+            ImGui::InputFloat3("LinearAcceleration", &particleComponent->LinearAcceleration.x);
+            ImGui::Text("Mass: %.1f", 1.0f / particleComponent->inverseMass);
+        }
+
+        if (m_scene.HasComponent<RigidBody>(m_selectedEntity))
+        {
+            RigidBody* rigidBodyComponent = m_scene.GetComponent<RigidBody>(m_selectedEntity);
+            ImGui::Text("RigidBody Component:");
+            ImGui::InputFloat3("AngularVelocity", &rigidBodyComponent->AngularVelocity.x);
+            ImGui::InputFloat3("AngularAcceleration", &rigidBodyComponent->AngularAcceleration.x);
+        }
 
         if (ImGui::Button("Remove Entity"))
         {

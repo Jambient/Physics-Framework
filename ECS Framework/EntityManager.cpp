@@ -60,3 +60,8 @@ bool EntityManager::DoesEntityExist(Entity entity)
 {
 	return m_signatures[entity].any();
 }
+
+bool EntityManager::HasComponent(Entity entity, ComponentType componentType)
+{
+	return m_signatures[entity].test(componentType);
+}
