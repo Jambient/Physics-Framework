@@ -133,7 +133,27 @@ void AABBTree::RemoveEntity(Entity entity)
 	RemoveLeaf(m_entityToNodeIndex[entity]);
 }
 
-void AABBTree::Update(Entity entity, const AABB& newBox)
+void AABBTree::UpdatePosition(Entity entity, const Vector3& newPosition)
+{
+	int leafIndex = m_entityToNodeIndex[entity];
+
+	// check if the entity actually exists in the tree
+	if (leafIndex == NULL_INDEX) { return; }
+
+	GetNode(leafIndex).box.;
+}
+
+void AABBTree::UpdateSize(Entity entity, const Vector3& newSize)
+{
+	int leafIndex = m_entityToNodeIndex[entity];
+
+	// check if the entity actually exists in the tree
+	if (leafIndex == NULL_INDEX) { return; }
+
+	GetNode(leafIndex).box = newBox;
+}
+
+void AABBTree::TriggerUpdate(Entity entity)
 {
 	int leafIndex = m_entityToNodeIndex[entity];
 

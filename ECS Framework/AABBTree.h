@@ -36,7 +36,9 @@ public:
 	void RemoveLeaf(int leafIndex);
 	void RemoveEntity(Entity entity);
 
-	void Update(Entity entity, const AABB& newBox);
+	void UpdatePosition(Entity entity);
+	void UpdateSize(Entity entity);
+	void TriggerUpdate(Entity entity);
 
 	Entity Intersect(const Ray& ray, float& closestDistance);
 	int CalculateNodeLevel(int nodeIndex) const;

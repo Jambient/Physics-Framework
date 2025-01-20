@@ -48,6 +48,11 @@ struct RigidBody
 	}
 };
 
+struct Mesh
+{
+	unsigned int MeshId;
+};
+
 struct Collider
 {
 	std::variant<OBB, Sphere> Collider;

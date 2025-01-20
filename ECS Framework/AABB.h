@@ -33,9 +33,21 @@ struct AABB
 		return { lowerBound - margin, upperBound + margin };
 	}
 
-	static AABB FromPositionScale(const Vector3& position, const Vector3& size)
+	void updatePosition(const Vector3& position)
 	{
-		Vector3 halfExtents = size * 0.5f;
+		Vector3 delta = position - getPosition();
+		lowerBound += delta;
+		upperBound += delta;
+	}
+
+	void updateScale(const Vector3& scale)
+	{
+
+	}
+
+	static AABB FromPositionScale(const Vector3& position, const Vector3& scale)
+	{
+		Vector3 halfExtents = scale * 0.5f;
 		return { position - halfExtents, position + halfExtents };
 	}
 

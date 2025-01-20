@@ -363,6 +363,23 @@ void DX11App::Update()
 
         m_colliderUpdateSystem->Update();
 
+        // aabb update
+        m_scene.ForEach<Transform, Collider>([&](Entity entity, Transform* transform, Collider* collider) {
+            std::visit([&](auto& specificCollider) {
+                using T = std::decay_t<decltype(specificCollider)>;
+
+                if constexpr (std::is_same_v<T, Sphere>)
+                {
+                    specificCollider.center = transform->Position;
+                }
+                else if constexpr (std::is_same_v<T, OBB>)
+                {
+                    specificCollider.Update(transform->Position, transform->Scale, transform->Rotation);
+                }
+                }, collider->Collider);
+            m_aabbTree.Update(entity, AABB::FromPositionScale(transform->Position, transform->Scale * 1.5));
+        });
+
         // also need to have individual elapsed time for system
 
         std::vector<std::pair<Entity, Entity>> potential = m_aabbTree.GetPotentialIntersections();
@@ -459,13 +476,6 @@ void DX11App::Update()
             //e2RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeB, fullImpulse));
         }
     }
-
-    m_scene.ForEach<Transform>([&](Entity entity, Transform* transform) {
-        m_instanceData[entity].Position = transform->Position;
-        m_instanceData[entity].Scale = transform->Scale;
-
-        m_aabbTree.Update(entity, AABB::FromPositionScale(transform->Position, transform->Scale * 1.5));
-    });
 
     for (Entity entity = 0; entity < MAX_ENTITIES; entity++)
     {
