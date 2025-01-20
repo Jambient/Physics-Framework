@@ -1,6 +1,8 @@
 #pragma once
 #include "Vector3.h"
 #include "Quaternion.h"
+#include "Matrix3.h"
+#include "AABB.h"
 
 enum class ColliderType
 {
@@ -39,7 +41,18 @@ struct OBB : public ColliderBase
 		axes[2] = rotation * Vector3::Forward;
 	}
 
-	void GetMinMaxVertexOnAxis(const Vector3& axis, float& minOut, float& maxOut) const
+	inline AABB toAABB()
+	{
+		Vector3 extents = Vector3(
+			fabsf(axes[0].x * halfExtents.x) + fabsf(axes[0].y) + fabsf(axes[0].z),
+			fabsf(axes[1].x) + fabsf(axes[1].y * halfExtents.y) + fabsf(axes[1].z),
+			fabsf(axes[2].x) + fabsf(axes[2].y) + fabsf(axes[2].z * halfExtents.z)
+		);
+
+		return AABB(center - extents, center + extents);
+	}
+
+	/*void GetMinMaxVertexOnAxis(const Vector3& axis, float& minOut, float& maxOut) const
 	{
 		float centerProjection = Vector3::Dot(center, axis);
 
@@ -51,7 +64,7 @@ struct OBB : public ColliderBase
 
 		minOut = centerProjection - extent;
 		maxOut = centerProjection + extent;
-	}
+	}*/
 };
 
 struct Sphere : public ColliderBase

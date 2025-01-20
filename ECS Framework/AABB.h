@@ -42,7 +42,9 @@ struct AABB
 
 	void updateScale(const Vector3& scale)
 	{
-
+		Vector3 position = getPosition();
+		lowerBound = position - scale * 0.5f;
+		upperBound = position + scale * 0.5f;
 	}
 
 	static AABB FromPositionScale(const Vector3& position, const Vector3& scale)

@@ -245,8 +245,8 @@ HRESULT DX11App::Init()
     );
     m_scene.AddComponent(
         entities[1],
-        //Collider{ OBB(Vector3::Up * 5, Vector3(1.0f, 1.0f, 1.0f), Quaternion()) }
-        Collider{ Sphere(Vector3::Up * 5, 0.5f) }
+        Collider{ OBB(Vector3::Up * 5, Vector3(1.0f, 1.0f, 1.0f), Quaternion()) }
+        //Collider{ Sphere(Vector3::Up * 5, 0.5f) }
     );
     m_aabbTree.InsertLeaf(entities[1], AABB::FromPositionScale(Vector3::Zero, Vector3::One));
 
@@ -370,14 +370,17 @@ void DX11App::Update()
 
                 if constexpr (std::is_same_v<T, Sphere>)
                 {
-                    specificCollider.center = transform->Position;
+                    m_aabbTree.UpdatePosition(entity, specificCollider.center);
                 }
                 else if constexpr (std::is_same_v<T, OBB>)
                 {
-                    specificCollider.Update(transform->Position, transform->Scale, transform->Rotation);
+                    AABB aabb = specificCollider.toAABB();
+                    m_aabbTree.UpdatePosition(entity, aabb.getPosition());
+                    m_aabbTree.UpdateScale(entity, aabb.getSize());
                 }
                 }, collider->Collider);
-            m_aabbTree.Update(entity, AABB::FromPositionScale(transform->Position, transform->Scale * 1.5));
+
+            m_aabbTree.TriggerUpdate(entity);
         });
 
         // also need to have individual elapsed time for system

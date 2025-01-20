@@ -71,4 +71,11 @@ public:
 			values[6] * vec.x + values[7] * vec.y + values[8] * vec.z
 		);
 	}
+
+	static Matrix3 FromRotationVectors(const Vector3& right, const Vector3& up, const Vector3& forward)
+	{
+		Matrix3 mat;
+		mat.Set(right.x, right.y, right.z, up.x, up.y, up.z, forward.x, forward.y, forward.z);
+		return mat;
+	}
 };

@@ -36,8 +36,8 @@ public:
 	void RemoveLeaf(int leafIndex);
 	void RemoveEntity(Entity entity);
 
-	void UpdatePosition(Entity entity);
-	void UpdateSize(Entity entity);
+	void UpdatePosition(Entity entity, const Vector3& newPosition);
+	void UpdateScale(Entity entity, const Vector3& newScale);
 	void TriggerUpdate(Entity entity);
 
 	Entity Intersect(const Ray& ray, float& closestDistance);

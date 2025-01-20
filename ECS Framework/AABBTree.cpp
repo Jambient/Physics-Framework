@@ -140,17 +140,17 @@ void AABBTree::UpdatePosition(Entity entity, const Vector3& newPosition)
 	// check if the entity actually exists in the tree
 	if (leafIndex == NULL_INDEX) { return; }
 
-	GetNode(leafIndex).box.;
+	GetNode(leafIndex).box.updatePosition(newPosition);
 }
 
-void AABBTree::UpdateSize(Entity entity, const Vector3& newSize)
+void AABBTree::UpdateScale(Entity entity, const Vector3& newScale)
 {
 	int leafIndex = m_entityToNodeIndex[entity];
 
 	// check if the entity actually exists in the tree
 	if (leafIndex == NULL_INDEX) { return; }
 
-	GetNode(leafIndex).box = newBox;
+	GetNode(leafIndex).box.updateScale(newScale);
 }
 
 void AABBTree::TriggerUpdate(Entity entity)
@@ -160,13 +160,13 @@ void AABBTree::TriggerUpdate(Entity entity)
 	// check if the entity actually exists in the tree
 	if (leafIndex == NULL_INDEX) { return; }
 
-	GetNode(leafIndex).box = newBox;
-
 	// check if the leaf node actually needs updating
 	if (!NeedsUpdate(leafIndex)) { return; }
 
+	AABB previousBox = GetNode(leafIndex).box;
+
 	RemoveLeaf(leafIndex);
-	InsertLeaf(entity, newBox);
+	InsertLeaf(entity, previousBox);
 }
 
 Entity AABBTree::Intersect(const Ray& ray, float& closestDistance)
