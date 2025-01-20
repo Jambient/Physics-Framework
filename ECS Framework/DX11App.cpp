@@ -1,7 +1,6 @@
 #include "DX11App.h"
 #include "ShaderManager.h"
 #include "Components.h"
-#include "PhysicsSystem.h"
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
@@ -149,7 +148,7 @@ HRESULT DX11App::Init()
 
     m_camera = new Camera();
     m_camera->SetLens(XMConvertToRadians(90), aspect, 0.1f, 500.0f);
-    m_camera->SetPosition(XMFLOAT3(0.0f, 0.0f, -5.0f));
+    m_camera->SetPosition(XMFLOAT3(0.0f, 2.0f, -5.0f));
 
     // create lights
     Light directionalLight;
@@ -162,13 +161,18 @@ HRESULT DX11App::Init()
 
     // initialise and build the scene
     m_scene.Init();
+    Collision::Init();
 
     m_scene.RegisterComponent<Particle>();
     m_scene.RegisterComponent<Transform>();
     m_scene.RegisterComponent<RigidBody>();
+    m_scene.RegisterComponent<Collider>();
 
     m_physicsSystem = m_scene.RegisterSystem<PhysicsSystem>();
     m_physicsSystem->m_scene = &m_scene;
+
+    m_colliderUpdateSystem = m_scene.RegisterSystem<ColliderUpdateSystem>();
+    m_colliderUpdateSystem->m_scene = &m_scene;
 
     Signature objectSignature;
     objectSignature.set(m_scene.GetComponentType<Transform>());
@@ -203,39 +207,48 @@ HRESULT DX11App::Init()
     entities[0] = m_scene.CreateEntity();
     entities[1] = m_scene.CreateEntity();
 
-    Vector3 cube1InertiaTensor = Vector3(
-        (1.0f / 12.0f) * (1.0f + 1.0f),
-        (1.0f / 12.0f) * (1.0f + 1.0f),
-        (1.0f / 12.0f) * (1.0f + 1.0f)
+    Vector3 inverseCubeInertia = Vector3(
+        (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f),
+        (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f),
+        (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f)
+    ).reciprocal();
+
+    /*m_scene.AddComponent(
+        entities[0],
+        Particle{ Vector3::Zero, Vector3::Zero, 0.0f, 0.1f }
     );
+    m_scene.AddComponent(
+        entities[0],
+        Transform{ Vector3::Zero, Quaternion(), Vector3(10.0f, 1.0f, 10.0f) }
+    );
+    m_scene.AddComponent(
+        entities[0],
+        RigidBody{ Vector3::Zero, Vector3::Zero, Vector3::Zero }
+    );
+    m_scene.AddComponent(
+        entities[0],
+        Collider{ OBB(Vector3::Zero, Vector3(10.0f, 1.0f, 10.0f), Quaternion()) }
+    );
+    m_aabbTree.InsertLeaf(entities[0], AABB::FromPositionScale(Vector3::Zero, Vector3(10.0f, 1.0f, 10.0f)));*/
 
     m_scene.AddComponent(
         entities[1],
-        Particle{ Vector3::Zero, Vector3::Zero, 0.99f, 1 / 2.0f}
+        Particle{ Vector3::Zero, Vector3::Zero, 1 / 2.0f, 0.2f }
     );
     m_scene.AddComponent(
         entities[1],
-        Transform{ Vector3::Left, Quaternion(), Vector3(1.0f, 1.0f, 1.0f) }
+        Transform{ Vector3::Up * 5, Quaternion(), Vector3(1.0f, 1.0f, 1.0f)}
     );
     m_scene.AddComponent(
         entities[1],
-        RigidBody{ Vector3::Zero, Vector3::Zero, cube1InertiaTensor * 2.0f}
-    );
-    m_aabbTree.InsertLeaf(entities[1], AABB::FromPositionScale(Vector3::Left, Vector3::One));
-
-    m_scene.AddComponent(
-        entities[0],
-        Particle{ Vector3::Zero, Vector3::Zero, 0.99f, 0.0f }
+        RigidBody{ Vector3::Zero, Vector3::Zero, inverseCubeInertia, Matrix3(inverseCubeInertia) }
     );
     m_scene.AddComponent(
-        entities[0],
-        Transform{ Vector3::Right, Quaternion(), Vector3(1.0f, 1.0f, 1.0f) }
+        entities[1],
+        //Collider{ OBB(Vector3::Up * 5, Vector3(1.0f, 1.0f, 1.0f), Quaternion()) }
+        Collider{ Sphere(Vector3::Up * 5, 0.5f) }
     );
-    m_scene.AddComponent(
-        entities[0],
-        RigidBody{ Vector3::Zero, Vector3::Zero, cube1InertiaTensor * 0.0f }
-    );
-    m_aabbTree.InsertLeaf(entities[0], AABB::FromPositionScale(Vector3::Right, Vector3::One));
+    m_aabbTree.InsertLeaf(entities[1], AABB::FromPositionScale(Vector3::Zero, Vector3::One));
 
     //for (Entity entity : entities)
     //{
@@ -348,14 +361,110 @@ void DX11App::Update()
         m_physicsSystem->Update(FPS60);
         m_physicsAccumulator -= FPS60;
 
+        m_colliderUpdateSystem->Update();
+
         // also need to have individual elapsed time for system
+
+        std::vector<std::pair<Entity, Entity>> potential = m_aabbTree.GetPotentialIntersections();
+
+        std::cout << "Collision Count: " << potential.size() << std::endl;
+
+        for (const auto [entity1, entity2] : potential)
+        {
+            Transform* e1Transform = m_scene.GetComponent<Transform>(entity1);
+            Particle* e1Particle = m_scene.GetComponent<Particle>(entity1);
+            RigidBody* e1RigidBody = m_scene.GetComponent<RigidBody>(entity1);
+            Transform* e2Transform = m_scene.GetComponent<Transform>(entity2);
+            Particle* e2Particle = m_scene.GetComponent<Particle>(entity2);
+            RigidBody* e2RigidBody = m_scene.GetComponent<RigidBody>(entity2);
+
+            ColliderBase& e1Collider = m_scene.GetComponent<Collider>(entity1)->GetColliderBase();
+            ColliderBase& e2Collider = m_scene.GetComponent<Collider>(entity2)->GetColliderBase();
+
+            CollisionManifold info = Collision::Collide(e1Collider, e2Collider);
+            if (!info) { continue; } // continue if narrow phase check fails
+
+            // Positional correction with slop
+            const float k_slop = 0.01f;
+            const float correctionFactor = 0.8f;
+            float correctedPenetration = max(info.penetrationDepth - k_slop, 0.0f);
+
+            float totalMass = e1Particle->InverseMass + e2Particle->InverseMass;
+            e1Transform->Position -= info.collisionNormal * correctedPenetration * correctionFactor * (e1Particle->InverseMass / totalMass);
+            e2Transform->Position += info.collisionNormal * correctedPenetration * correctionFactor * (e2Particle->InverseMass / totalMass);
+
+            for (const Vector3& contactPoint : info.contactPoints)
+            {
+                std::cout << contactPoint << std::endl;
+
+                Vector3 relativeA = contactPoint - e1Transform->Position;
+                Vector3 relativeB = contactPoint - e2Transform->Position;
+
+                Vector3 angVelocityA = Vector3::Cross(e1RigidBody->AngularVelocity, relativeA);
+                Vector3 angVelocityB = Vector3::Cross(e2RigidBody->AngularVelocity, relativeB);
+
+                Vector3 fullVelocityA = e1Particle->LinearVelocity + angVelocityA;
+                Vector3 fullVelocityB = e2Particle->LinearVelocity + angVelocityB;
+                Vector3 contactVelocity = fullVelocityB - fullVelocityA;
+
+                float impulseForce = Vector3::Dot(contactVelocity, info.collisionNormal);
+                if (impulseForce > 0.0f) continue; // Skip if objects are separating
+
+                Vector3 inertiaA = Vector3::Cross(e1RigidBody->InverseInertiaTensor * Vector3::Cross(relativeA, info.collisionNormal), relativeA);
+                Vector3 inertiaB = Vector3::Cross(e2RigidBody->InverseInertiaTensor * Vector3::Cross(relativeB, info.collisionNormal), relativeB);
+                float angularEffect = Vector3::Dot(inertiaA + inertiaB, info.collisionNormal);
+
+                float restitution = 0.0f;//e1Particle->Restitution * e2Particle->Restitution;
+                float j = (- (1.0f + restitution) * impulseForce) / (totalMass + angularEffect);
+
+                Vector3 fullImpulse = info.collisionNormal * j;
+
+                e1Particle->ApplyLinearImpulse(-fullImpulse);
+                e2Particle->ApplyLinearImpulse(fullImpulse);
+
+                e1RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeA, -fullImpulse));
+                e2RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeB, fullImpulse));
+            }
+
+            //float totalMass = e1Particle->inverseMass + e2Particle->inverseMass;
+            //e1Transform->Position -= info.collisionNormal * info.penetrationDepth * (e1Particle->inverseMass / totalMass);
+            //e2Transform->Position += info.collisionNormal * info.penetrationDepth * (e2Particle->inverseMass / totalMass);
+
+            //Vector3 relativeA = info.contactPoints[0] - e1Transform->Position;
+            //Vector3 relativeB = info.contactPoints[0] - e2Transform->Position;
+
+            //Vector3 angVelocityA = Vector3::Cross(e1RigidBody->AngularVelocity, relativeA);
+            //Vector3 angVelocityB = Vector3::Cross(e2RigidBody->AngularVelocity, relativeB);
+
+            //Vector3 fullVelocityA = e1Particle->LinearVelocity + angVelocityA;
+            //Vector3 fullVelocityB = e2Particle->LinearVelocity + angVelocityB;
+            //Vector3 contactVelocity = fullVelocityB - fullVelocityA;
+
+            //float impulseForce = Vector3::Dot(contactVelocity, info.collisionNormal);
+
+            //Vector3 inertiaA = Vector3::Cross(Vector3::Scale(e1RigidBody->inverseInertiaTensor, Vector3::Cross(relativeA, info.collisionNormal)), relativeA);
+            //Vector3 inertiaB = Vector3::Cross(Vector3::Scale(e2RigidBody->inverseInertiaTensor, Vector3::Cross(relativeB, info.collisionNormal)), relativeB);
+            //float angularEffect = Vector3::Dot(inertiaA + inertiaB, info.collisionNormal);
+
+            //float resititution = 0.2f; // this should be calculated with the product of the two objects restituions
+
+            //float j = (-(1.0f + resititution) * impulseForce) / (totalMass + angularEffect);
+
+            //Vector3 fullImpulse = info.collisionNormal * j;
+
+            //e1Particle->ApplyLinearImpulse(-fullImpulse);
+            //e2Particle->ApplyLinearImpulse(fullImpulse);
+
+            //e1RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeA, -fullImpulse));
+            //e2RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeB, fullImpulse));
+        }
     }
 
     m_scene.ForEach<Transform>([&](Entity entity, Transform* transform) {
         m_instanceData[entity].Position = transform->Position;
         m_instanceData[entity].Scale = transform->Scale;
 
-        m_aabbTree.Update(entity, AABB::FromPositionScale(transform->Position, transform->Scale));
+        m_aabbTree.Update(entity, AABB::FromPositionScale(transform->Position, transform->Scale * 1.5));
     });
 
     for (Entity entity = 0; entity < MAX_ENTITIES; entity++)
@@ -368,36 +477,6 @@ void DX11App::Update()
         {
             m_instanceData[entity] = InstanceData();
         }
-    }
-
-    std::vector<std::pair<Entity, Entity>> potential = m_aabbTree.GetPotentialIntersections();
-
-    for (const auto [entity1, entity2] : potential)
-    {
-        m_instanceData[entity1].Color = Vector3(1.0f, 0.0f, 0.0f);
-        m_instanceData[entity2].Color = Vector3(1.0f, 0.0f, 0.0f);
-
-        Transform* e1Transform = m_scene.GetComponent<Transform>(entity1);
-        Particle* e1Particle = m_scene.GetComponent<Particle>(entity1);
-        Transform* e2Transform = m_scene.GetComponent<Transform>(entity2);
-        Particle* e2Particle = m_scene.GetComponent<Particle>(entity2);
-
-        CollisionInfo info = Collision::Intersects(AABB::FromPositionScale(e1Transform->Position, e1Transform->Scale), AABB::FromPositionScale(e2Transform->Position, e2Transform->Scale));
-        if (!info) { continue; } // continue if narrow phase check fails
-
-        float resititution = 0.2f; // this should be calculated with the product of the two objects restituions
-
-        Vector3 relativeVelocity = e1Particle->LinearVelocity - e2Particle->LinearVelocity;
-        float collisionVelocity = Vector3::Dot(relativeVelocity * -(1.0f + resititution), info.normal);
-
-        float impulse = collisionVelocity / (e1Particle->inverseMass + e2Particle->inverseMass);
-
-        float totalMass = e1Particle->inverseMass + e2Particle->inverseMass;
-        e1Transform->Position += info.normal * (info.penetrationDepth * e1Particle->inverseMass / totalMass);
-        e2Transform->Position -= info.normal * (info.penetrationDepth * e2Particle->inverseMass / totalMass);
-
-        e1Particle->LinearVelocity += info.normal * (e1Particle->inverseMass * impulse);
-        e2Particle->LinearVelocity -= info.normal * (e2Particle->inverseMass * impulse);
     }
 
     D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -421,21 +500,28 @@ void DX11App::Update()
             Entity newEntity = m_scene.CreateEntity();
             m_scene.AddComponent(
                 newEntity,
-                Particle{ Vector3::Zero, Vector3::Zero, 0.99f, 1 / 2.0f}
+                Particle{ Vector3::Zero, Vector3::Zero, 1 / 2.0f, 0.2f}
             );
             m_scene.AddComponent(
                 newEntity,
                 Transform{ Vector3(camPos.x, camPos.y, camPos.z), Quaternion(), Vector3(1.0f, 1.0f, 1.0f) }
             );
 
-            Vector3 cube1InertiaTensor = Vector3(
-                (1.0f / 12.0f) * (1.0f + 1.0f),
-                (1.0f / 12.0f) * (1.0f + 1.0f),
-                (1.0f / 12.0f) * (1.0f + 1.0f)
-            );
+            Vector3 inverseCubeInertia = Vector3(
+                (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f),
+                (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f),
+                (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f)
+            ).reciprocal();
+
             m_scene.AddComponent(
                 newEntity,
-                RigidBody{ Vector3::Zero, Vector3::Zero, cube1InertiaTensor * 2.0f }
+                RigidBody{ Vector3::Zero, Vector3::Zero, inverseCubeInertia, Matrix3(inverseCubeInertia) }
+            );
+
+            m_scene.AddComponent(
+                newEntity,
+                //Collider{ OBB(Vector3::Up * 5, Vector3(1.0f, 1.0f, 1.0f), Quaternion()) }
+                Collider{ Sphere(Vector3(camPos.x, camPos.y, camPos.z), 0.5f) }
             );
 
             m_aabbTree.InsertLeaf(newEntity, AABB::FromPositionScale(Vector3(camPos.x, camPos.y, camPos.z), Vector3::One));
@@ -466,8 +552,8 @@ void DX11App::Update()
 
             ImGui::Text("Particle Component:");
             ImGui::InputFloat3("LinearVelocity", &particleComponent->LinearVelocity.x);
-            ImGui::InputFloat3("LinearAcceleration", &particleComponent->LinearAcceleration.x);
-            ImGui::Text("Mass: %.1f", 1.0f / particleComponent->inverseMass);
+            ImGui::InputFloat3("Force", &particleComponent->Force.x);
+            ImGui::Text("Mass: %.1f", 1.0f / particleComponent->InverseMass);
         }
 
         if (m_scene.HasComponent<RigidBody>(m_selectedEntity))
@@ -475,7 +561,7 @@ void DX11App::Update()
             RigidBody* rigidBodyComponent = m_scene.GetComponent<RigidBody>(m_selectedEntity);
             ImGui::Text("RigidBody Component:");
             ImGui::InputFloat3("AngularVelocity", &rigidBodyComponent->AngularVelocity.x);
-            ImGui::InputFloat3("AngularAcceleration", &rigidBodyComponent->AngularAcceleration.x);
+            ImGui::InputFloat3("Torque", &rigidBodyComponent->Torque.x);
         }
 
         if (ImGui::Button("Remove Entity"))
@@ -493,7 +579,6 @@ void DX11App::Update()
 
     ImGui::Begin("Application Stats");
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-    ImGui::Text("Vertices Rendered (Includes ImGui): %d", io.MetricsRenderVertices);
     ImGui::Text("Entity Count: %d of %d", m_scene.GetEntityCount(), MAX_ENTITIES);
     ImGui::End();
 

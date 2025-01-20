@@ -133,6 +133,8 @@
     <ClInclude Include="AABBTree.h" />
     <ClInclude Include="Archetype.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="Colliders.h" />
+    <ClInclude Include="ColliderUpdateSystem.h" />
     <ClInclude Include="Collision.h" />
     <ClInclude Include="ComponentManager.h" />
     <ClInclude Include="Components.h" />
@@ -149,8 +151,10 @@
     <ClInclude Include="imstb_rectpack.h" />
     <ClInclude Include="imstb_textedit.h" />
     <ClInclude Include="imstb_truetype.h" />
+    <ClInclude Include="Matrix3.h" />
     <ClInclude Include="OBJLoader.h" />
     <ClInclude Include="PhysicsSystem.h" />
+    <ClInclude Include="Plane.h" />
     <ClInclude Include="Quaternion.h" />
     <ClInclude Include="Ray.h" />
     <ClInclude Include="Scene.h" />

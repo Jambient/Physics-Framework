@@ -91,7 +91,10 @@ public:
 	template <typename T>
 	void AddComponent(Entity entity, T component)
 	{
-		Signature newSignature = m_componentManager->AddComponent<T>(entity, m_entityManager->GetSignature(entity), component);
+		Signature oldSignature = m_entityManager->GetSignature(entity);
+		assert(!oldSignature.test(m_componentManager->GetComponentType<T>()) && "Component already added to entity");
+
+		Signature newSignature = m_componentManager->AddComponent<T>(entity, oldSignature, component);
 		m_entityManager->SetSignature(entity, newSignature);
 
 		m_systemManager->EntitySignatureChanged(entity, newSignature);

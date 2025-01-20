@@ -7,6 +7,7 @@
 #include "OBJLoader.h"
 #include "Scene.h"
 #include "PhysicsSystem.h"
+#include "ColliderUpdateSystem.h"
 #include "Timer.h"
 #include "Vector3.h"
 #include "AABBTree.h"
@@ -64,6 +65,7 @@ private:
 	AABBTree m_aabbTree;
 	Scene m_scene;
 	std::shared_ptr<PhysicsSystem> m_physicsSystem;
+	std::shared_ptr<ColliderUpdateSystem> m_colliderUpdateSystem;
 	double m_physicsAccumulator = 0.0;
 	Timer m_timer;
 
@@ -71,10 +73,6 @@ private:
 	MeshData m_cubeMeshData;
 
 	ID3D11Buffer* m_instanceBuffer;
-
-	// fps title variables
-	float m_timeSinceLastTitleUpdate = 1.0f;
-	int m_framesSinceLastTitleUpdate = 0;
 
 	// rendering variables
 	std::vector<InstanceData> m_instanceData;

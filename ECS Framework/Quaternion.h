@@ -4,6 +4,7 @@
 #include <math.h>
 #include <array>
 #include "Vector3.h"
+#include "Matrix3.h"
 
 // this quaternion class was made with great help from https://www.3dgep.com/understanding-quaternions/ 
 // which goes through a large amount of the required equations.
@@ -20,6 +21,7 @@ public:
 
 	Quaternion() : r(1.0f), i(0.0f), j(0.0f), k(0.0f) {};
 	Quaternion(float r, float i, float j, float k) : r(r), i(i), j(j), k(k) {};
+	Quaternion(float r, const Vector3& vector) : r(r), i(vector.x), j(vector.y), k(vector.z) {};
 
 	float magnitude() const
 	{
@@ -80,29 +82,6 @@ public:
 	{
 		std::array<float, 16> rotMat;
 
-		// First row of the rotation matrix
-		//rotMat[0] = 2 * (r * r + i * i) - 1;
-		//rotMat[1] = 2 * (i * j - r * k);
-		//rotMat[2] = 2 * (i * k + r * j);
-		//rotMat[3] = 0;
-
-		//// Second row of the rotation matrix
-		//rotMat[4] = 2 * (i * j + r * k);
-		//rotMat[5] = 2 * (i * i + j * j) - 1;
-		//rotMat[6] = 2 * (j * k - r * i);
-		//rotMat[7] = 0;
-
-		//// Third row of the rotation matrix
-		//rotMat[8] = 2 * (i * k - r * j);
-		//rotMat[9] = 2 * (j * k + r * i);
-		//rotMat[10] = 2 * (r * r + k * k) - 1;
-		//rotMat[11] = 0;
-
-		//rotMat[12] = 0;
-		//rotMat[13] = 0;
-		//rotMat[14] = 0;
-		//rotMat[15] = 1;
-
 		rotMat[0] = 2 * (r * r + i * i) - 1;
 		rotMat[1] = 2 * (i * j - r * k);
 		rotMat[2] = 2 * (i * k + r * j);
@@ -127,6 +106,38 @@ public:
 		rotMat[15] = 1;
 
 		return rotMat.data();
+	}
+
+	// TODO: I NEED TO MERGE THIS METHOD WITH THE ABOVE ONE
+	Matrix3 toMatrix3() const 
+	{
+		Matrix3 mat;
+
+		// x = i, y = j, z = k, w = r
+
+		float yy = j * j;
+		float zz = k * k;
+		float xy = i * j;
+		float zw = k * r;
+		float xz = i * k;
+		float yw = j * r;
+		float xx = i * i;
+		float yz = j * k;
+		float xw = i * r;
+
+		mat.values[0] = 1 - 2 * yy - 2 * zz;
+		mat.values[1] = 2 * xy + 2 * zw;
+		mat.values[2] = 2 * xz - 2 * yw;
+
+		mat.values[3] = 2 * xy - 2 * zw;
+		mat.values[4] = 1 - 2 * xx - 2 * zz;
+		mat.values[5] = 2 * yz + 2 * xw;
+
+		mat.values[6] = 2 * xz + 2 * yw;
+		mat.values[7] = 2 * yz - 2 * xw;
+		mat.values[8] = 1 - 2 * xx - 2 * yy;
+
+		return mat;
 	}
 
 	// operator overrides

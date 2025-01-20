@@ -1,14 +1,23 @@
 #pragma once
-#include "Components.h"
 #include "Structures.h"
-#include "AABB.h"
+#include "Colliders.h"
+#include <functional>
 
-struct CollisionInfo
+// data retrieved from intersection tests
+struct CollisionData
 {
-	bool isColliding = false;
+	float penetration;
 	Vector3 normal;
-	float penetrationDepth = 0.0f;
-	Vector3 contactPoint;
+	Vector3 point;
+};
+
+// full manifold derived from collision data
+struct CollisionManifold
+{
+	bool isColliding;
+	Vector3 collisionNormal;
+	float penetrationDepth;
+	std::vector<Vector3> contactPoints;
 
 	// this makes sure this struct can be used in conditionals
 	explicit operator bool() const
@@ -17,12 +26,17 @@ struct CollisionInfo
 	}
 };
 
+using CollisionHandler = std::function<CollisionManifold(const ColliderBase&, const ColliderBase&)>;
+
 class Collision
 {
 public:
-	static CollisionInfo Intersects(const AABB& c1, const AABB& c2);
+	static CollisionManifold Collide(const ColliderBase& c1, const ColliderBase& c2);
 
-	static bool Intersects(const SphereCollider& c1, const SphereCollider& c2);
+	static void RegisterCollisionHandler(ColliderType typeA, ColliderType typeB, CollisionHandler handler);
 
-    static bool Intersects(const OBB& c1, const OBB& c2);
+	static void Init();
+
+private:
+	static CollisionHandler dispatchTable[ColliderTypeCount][ColliderTypeCount];
 };

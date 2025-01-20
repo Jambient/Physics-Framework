@@ -7,69 +7,51 @@ class PhysicsSystem : public System
 public:
 	void Update(float dt)
 	{
-		//m_scene->ForEach<Gravity, Transform, RigidBody>([dt](Entity entity, Gravity* gravity, Transform* transform, RigidBody* rigidbody) {
-		//	//transform->Position += rigidbody->Velocity * dt;
-		//	//rigidbody->Velocity += gravity->Force * dt;
-		//	transform->Position += Vector3::Down * 10 * dt;
-		//});
+		float dampingFactor = 0.99f;
+		float frameDamping = std::powf(dampingFactor, dt);
 
-		// integrate particles
-		m_scene->ForEach<Particle, Transform>([dt](Entity entity, Particle* particle, Transform* transform)
+		// integrate linear movement
+		m_scene->ForEach<Particle, Transform>([dt, frameDamping](Entity entity, Particle* particle, Transform* transform)
 			{
 				// dont integrate things with infinite mass
-				if (particle->inverseMass <= 0.0f) return;
+				if (particle->InverseMass <= 0.0f) return;
 
 				assert(dt > 0.0);
+
+				Vector3 accel = particle->Force * particle->InverseMass;
+				//accel += Vector3::Down * 9.8f;
+
+				particle->LinearVelocity += accel * dt;
 
 				// update linear position
 				transform->Position += particle->LinearVelocity * dt;
 
-				// work out the accelerate from the force.
-				Vector3 resultingAcc = particle->LinearAcceleration;
-
-				// update linear velocity from the acceleration
-				particle->LinearVelocity += resultingAcc * dt;
-
 				// impose drag
-				particle->LinearVelocity *= std::powf(particle->damping, dt);
+				particle->LinearVelocity *= frameDamping;
 			});
 
-		m_scene->ForEach<Particle, RigidBody, Transform>([dt](Entity entity, Particle* particle, RigidBody* rigidBody, Transform* transform)
+		// integrate angular movement
+		m_scene->ForEach<Particle, RigidBody, Transform>([dt, frameDamping](Entity entity, Particle* particle, RigidBody* rigidBody, Transform* transform)
 			{
 				// dont integrate things with infinite mass
-				if (particle->inverseMass <= 0.0f) return;
+				if (particle->InverseMass <= 0.0f) return;
 
 				assert(dt > 0.0);
 
-				// update linear position
-				Quaternion q = Quaternion::FromEulerAngles(rigidBody->AngularVelocity);
-				transform->Rotation *= q;
-				//transform->Rotation += transform->Rotation * rigidBody->AngularVelocity * dt * 0.5f;
+				// update inertia tensor
+				Quaternion q = transform->Rotation;
+				Matrix3 invOrientation = q.conjugate().toMatrix3();
+				Matrix3 orientation = q.toMatrix3();
 
-				// work out the accelerate from the force.
-				Vector3 resultingAcc = rigidBody->AngularAcceleration;
+				rigidBody->InverseInertiaTensor = orientation * Matrix3(rigidBody->InverseInertia) * invOrientation;
 
-				// update linear velocity from the acceleration
-				rigidBody->AngularVelocity += resultingAcc * dt;
+				Vector3 angAccel = rigidBody->InverseInertiaTensor * rigidBody->Torque;
+				rigidBody->AngularVelocity += angAccel * dt;
 
-				// impose drag
-				rigidBody->AngularVelocity *= std::powf(particle->damping, dt);
+				transform->Rotation += Quaternion(0.0f, rigidBody->AngularVelocity * dt * 0.5f) * q;
+				transform->Rotation.normalize();
+
+				rigidBody->AngularVelocity *= frameDamping;
 			});
-
-		//std::vector<Transform>& transformComponents = m_scene->GetAllComponents<Transform>();
-		//std::vector<RigidBody>& rigidBodyComponents = m_scene->GetAllComponents<RigidBody>();
-		//const std::vector<Gravity>& gravityComponents = m_scene->GetAllComponents<Gravity>();
-
-		//for (size_t i = 0; i < m_entities.size(); i++)
-		//{
-		//	transformComponents[i].Position += rigidBodyComponents[i].Velocity * dt;
-		//	rigidBodyComponents[i].Velocity += gravityComponents[i].Force * dt;
-
-		//	//// update position with velocity
-		//	//XMStoreFloat3(&transformComponents[i].Position, XMVectorAdd(XMVectorScale(XMLoadFloat3(&rigidBodyComponents[i].Velocity), dt), XMLoadFloat3(&transformComponents[i].Position)));
-
-		//	//// update rigidbody velocity using gravity
-		//	//XMStoreFloat3(&rigidBodyComponents[i].Velocity, XMVectorAdd(XMVectorScale(XMLoadFloat3(&gravityComponents[i].Force), dt), XMLoadFloat3(&rigidBodyComponents[i].Velocity)));
-		//}
 	}
 };

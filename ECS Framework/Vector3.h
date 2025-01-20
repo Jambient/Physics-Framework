@@ -1,5 +1,6 @@
 #pragma once
 #include <math.h>
+#include <iostream>
 
 class Vector3
 {
@@ -112,6 +113,23 @@ public:
 	Vector3 operator-() const
 	{
 		return Vector3(-x, -y, -z);
+	}
+
+	const float& operator[](int index) const {
+		switch (index) 
+		{
+		case 0: return x;
+		case 1: return y;
+		case 2: return z;
+		default:
+			throw std::out_of_range("Index out of range for Vector3");
+		}
+	}
+
+	friend std::ostream& operator<<(std::ostream& os, const Vector3& vec)
+	{
+		os << "(" << vec.x << ", " << vec.y << ", " << vec.z << ")";
+		return os;
 	}
 
 	static float Angle(const Vector3& a, const Vector3& b)

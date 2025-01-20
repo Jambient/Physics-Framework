@@ -1,6 +1,9 @@
 #pragma once
 #include "Vector3.h"
 #include "Quaternion.h"
+#include "Matrix3.h"
+#include "Colliders.h"
+#include <variant>
 
 struct Transform
 {
@@ -15,28 +18,44 @@ struct Particle
 	Vector3 LinearVelocity = Vector3::Zero;
 
 	// Holds the acceleration of the particle.
-	Vector3 LinearAcceleration = Vector3::Zero;
-
-	// Holds the amount of damping applied to linear motion.
-	float damping;
+	Vector3 Force = Vector3::Zero;
 
 	// Holds the inverse of the mass of the particle.
-	float inverseMass;
+	float InverseMass;
 
-	float restitution;
+	// Coefficient of Restitution.
+	float Restitution;
+
+	void ApplyLinearImpulse(const Vector3& force)
+	{
+		LinearVelocity += force * InverseMass;
+	}
 };
 
 struct RigidBody
 {
 	Vector3 AngularVelocity = Vector3::Zero;
 
-	Vector3 AngularAcceleration = Vector3::Zero;
+	Vector3 Torque = Vector3::Zero;
 
-	Vector3 inverseInertiaTensor = Vector3::Zero;
+	Vector3 InverseInertia = Vector3::Zero;
+
+	Matrix3 InverseInertiaTensor;
+
+	void ApplyAngularImpuse(const Vector3& force)
+	{
+		AngularVelocity += InverseInertiaTensor * force;
+	}
 };
 
-struct SphereCollider
+struct Collider
 {
-	Vector3 center;
-	float radius;
+	std::variant<OBB, Sphere> Collider;
+
+	ColliderBase& GetColliderBase()
+	{
+		return std::visit([](auto& concreteCollider) -> ColliderBase& {
+			return static_cast<ColliderBase&>(concreteCollider); // Cast to base class
+			}, Collider);
+	}
 };
