@@ -4,7 +4,6 @@
 #include "DX11Framework.h"
 #include "Structures.h"
 #include "Camera.h"
-#include "OBJLoader.h"
 #include "Scene.h"
 #include "PhysicsSystem.h"
 #include "ColliderUpdateSystem.h"
@@ -68,9 +67,6 @@ private:
 	std::shared_ptr<ColliderUpdateSystem> m_colliderUpdateSystem;
 	double m_physicsAccumulator = 0.0;
 	Timer m_timer;
-
-	// mesh data
-	MeshData m_cubeMeshData;
 
 	ID3D11Buffer* m_instanceBuffer;
 

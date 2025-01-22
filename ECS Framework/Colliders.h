@@ -2,22 +2,86 @@
 #include "Vector3.h"
 #include "Quaternion.h"
 #include "Matrix3.h"
-#include "AABB.h"
 
 enum class ColliderType
 {
 	Plane,
 	Sphere,
+	AlignedBox,
 	OrientedBox
 };
 
-const int ColliderTypeCount = 3;
+const int ColliderTypeCount = 4;
 
 struct ColliderBase
 {
 	ColliderType type;
 
 	ColliderBase(ColliderType type) : type(type) {}
+};
+
+struct AABB : public ColliderBase
+{
+	AABB() : lowerBound(Vector3::Zero), upperBound(Vector3::Zero), ColliderBase(ColliderType::AlignedBox) {};
+	AABB(const Vector3& lowerBound, const Vector3& upperBound)
+		: lowerBound(lowerBound), upperBound(upperBound), ColliderBase(ColliderType::AlignedBox) {};
+
+	Vector3 lowerBound;
+	Vector3 upperBound;
+
+	Vector3 getPosition() const
+	{
+		return (lowerBound + upperBound) * 0.5f;
+	}
+
+	Vector3 getSize() const
+	{
+		return upperBound - lowerBound;
+	}
+
+	float area() const
+	{
+		Vector3 d = upperBound - lowerBound;
+		return 2.0f * (d.x * d.y + d.y * d.z + d.z * d.x);
+	}
+
+	AABB enlarged(float factor) const
+	{
+		Vector3 margin = (upperBound - lowerBound) * factor;
+		return { lowerBound - margin, upperBound + margin };
+	}
+
+	void updatePosition(const Vector3& position)
+	{
+		Vector3 delta = position - getPosition();
+		lowerBound += delta;
+		upperBound += delta;
+	}
+
+	void updateScale(const Vector3& scale)
+	{
+		Vector3 position = getPosition();
+		lowerBound = position - scale * 0.5f;
+		upperBound = position + scale * 0.5f;
+	}
+
+	static AABB FromPositionScale(const Vector3& position, const Vector3& scale)
+	{
+		Vector3 halfExtents = scale * 0.5f;
+		return { position - halfExtents, position + halfExtents };
+	}
+
+	static AABB Union(const AABB& a, const AABB& b)
+	{
+		return { Vector3::Min(a.lowerBound, b.lowerBound), Vector3::Max(a.upperBound, b.upperBound) };
+	}
+
+	static bool Overlap(const AABB& a, const AABB b)
+	{
+		return (a.lowerBound.x <= b.upperBound.x && a.upperBound.x >= b.lowerBound.x) &&
+			(a.lowerBound.y <= b.upperBound.y && a.upperBound.y >= b.lowerBound.y) &&
+			(a.lowerBound.z <= b.upperBound.z && a.upperBound.z >= b.lowerBound.z);
+	}
 };
 
 struct OBB : public ColliderBase
@@ -43,13 +107,18 @@ struct OBB : public ColliderBase
 
 	inline AABB toAABB()
 	{
-		Vector3 extents = Vector3(
-			fabsf(axes[0].x * halfExtents.x) + fabsf(axes[0].y) + fabsf(axes[0].z),
-			fabsf(axes[1].x) + fabsf(axes[1].y * halfExtents.y) + fabsf(axes[1].z),
-			fabsf(axes[2].x) + fabsf(axes[2].y) + fabsf(axes[2].z * halfExtents.z)
+		// Compute the absolute values of the axes scaled by the half extents.
+		Vector3 absExtent = Vector3(
+			fabsf(axes[0].x) * halfExtents.x + fabsf(axes[0].y) * halfExtents.y + fabsf(axes[0].z) * halfExtents.z,
+			fabsf(axes[1].x) * halfExtents.x + fabsf(axes[1].y) * halfExtents.y + fabsf(axes[1].z) * halfExtents.z,
+			fabsf(axes[2].x) * halfExtents.x + fabsf(axes[2].y) * halfExtents.y + fabsf(axes[2].z) * halfExtents.z
 		);
 
-		return AABB(center - extents, center + extents);
+		// Compute the min and max of the AABB.
+		Vector3 aabbMin = center - absExtent;
+		Vector3 aabbMax = center + absExtent;
+
+		return AABB(aabbMin, aabbMax);
 	}
 
 	/*void GetMinMaxVertexOnAxis(const Vector3& axis, float& minOut, float& maxOut) const

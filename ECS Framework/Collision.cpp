@@ -316,6 +316,37 @@ CollisionManifold HandleSphereSphereCollision(const ColliderBase& a, const Colli
     return manifold;
 }
 
+CollisionManifold HandleAABBSphereCollision(const ColliderBase& a, const ColliderBase& b)
+{
+    // cast colliders into correct type
+    const AABB& boxA = static_cast<const AABB&>(a);
+    const Sphere& sphereB = static_cast<const Sphere&>(b);
+
+    CollisionManifold manifold;
+    manifold.isColliding = false;
+
+    Vector3 boxSize = boxA.getSize() * 0.5f;
+    Vector3 delta = sphereB.center - boxA.getPosition();
+
+    Vector3 closestPointOnBox = Vector3::Clamp(delta, -boxSize, boxSize);
+
+    Vector3 localPoint = delta - closestPointOnBox;
+    float distance = localPoint.magnitude();
+
+    if (distance < sphereB.radius)
+    {
+        manifold.isColliding = true;
+
+        manifold.collisionNormal = localPoint.normalized();
+        manifold.penetrationDepth = sphereB.radius - distance;
+
+        Vector3 contactPoint = sphereB.center + -manifold.collisionNormal * sphereB.radius;
+        manifold.contactPoints.push_back(contactPoint);
+    }
+
+    return manifold;
+}
+
 CollisionManifold Collision::Collide(const ColliderBase& c1, const ColliderBase& c2)
 {
     size_t c1Index = static_cast<size_t>(c1.type);
@@ -353,4 +384,7 @@ void Collision::Init()
 
     // sphere vs ...
     Collision::RegisterCollisionHandler(ColliderType::Sphere, ColliderType::Sphere, HandleSphereSphereCollision);
+
+    // aligned box vs ...
+    Collision::RegisterCollisionHandler(ColliderType::AlignedBox, ColliderType::Sphere, HandleAABBSphereCollision);
 }

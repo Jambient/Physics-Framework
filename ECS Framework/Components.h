@@ -50,12 +50,12 @@ struct RigidBody
 
 struct Mesh
 {
-	unsigned int MeshId;
+	int MeshId;
 };
 
 struct Collider
 {
-	std::variant<OBB, Sphere> Collider;
+	std::variant<OBB, Sphere, AABB> Collider;
 
 	ColliderBase& GetColliderBase()
 	{

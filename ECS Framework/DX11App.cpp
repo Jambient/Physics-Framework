@@ -5,6 +5,7 @@
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
 #include "Collision.h"
+#include "MeshLoader.h"
 #include <iostream>
 #include <stdexcept>
 #include <random>
@@ -159,6 +160,10 @@ HRESULT DX11App::Init()
     m_lightBufferData.Lights[0] = directionalLight;
     m_lightBufferData.LightCount = 1;
 
+    // load meshes
+    MeshLoader::LoadMesh("Models/Cube.obj", "Cube", m_device, false);
+    MeshLoader::LoadMesh("Models/Sphere.obj", "Sphere", m_device, false);
+
     // initialise and build the scene
     m_scene.Init();
     Collision::Init();
@@ -167,6 +172,7 @@ HRESULT DX11App::Init()
     m_scene.RegisterComponent<Transform>();
     m_scene.RegisterComponent<RigidBody>();
     m_scene.RegisterComponent<Collider>();
+    m_scene.RegisterComponent<Mesh>();
 
     m_physicsSystem = m_scene.RegisterSystem<PhysicsSystem>();
     m_physicsSystem->m_scene = &m_scene;
@@ -206,6 +212,8 @@ HRESULT DX11App::Init()
 
     entities[0] = m_scene.CreateEntity();
     entities[1] = m_scene.CreateEntity();
+    entities[2] = m_scene.CreateEntity();
+    entities[3] = m_scene.CreateEntity();
 
     Vector3 inverseCubeInertia = Vector3(
         (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f),
@@ -213,7 +221,7 @@ HRESULT DX11App::Init()
         (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f)
     ).reciprocal();
 
-    /*m_scene.AddComponent(
+    m_scene.AddComponent(
         entities[0],
         Particle{ Vector3::Zero, Vector3::Zero, 0.0f, 0.1f }
     );
@@ -227,10 +235,39 @@ HRESULT DX11App::Init()
     );
     m_scene.AddComponent(
         entities[0],
-        Collider{ OBB(Vector3::Zero, Vector3(10.0f, 1.0f, 10.0f), Quaternion()) }
+        Collider{ AABB::FromPositionScale(Vector3::Zero, Vector3(10.0f, 1.0f, 10.0f)) }
     );
-    m_aabbTree.InsertLeaf(entities[0], AABB::FromPositionScale(Vector3::Zero, Vector3(10.0f, 1.0f, 10.0f)));*/
+    m_scene.AddComponent(
+        entities[0],
+        Mesh{ MeshLoader::GetMeshID("Cube") }
+    );
+    m_aabbTree.InsertLeaf(entities[0], AABB::FromPositionScale(Vector3::Zero, Vector3(10.0f, 1.0f, 10.0f)));
 
+    // walls
+    m_scene.AddComponent(
+        entities[2],
+        Particle{ Vector3::Zero, Vector3::Zero, 0.0f, 0.1f }
+    );
+    m_scene.AddComponent(
+        entities[2],
+        Transform{ Vector3(0.0f, 3.1f, 5.6f), Quaternion(), Vector3(10.0f, 5.0f, 1.0f)}
+    );
+    m_scene.AddComponent(
+        entities[2],
+        RigidBody{ Vector3::Zero, Vector3::Zero, Vector3::Zero }
+    );
+    m_scene.AddComponent(
+        entities[2],
+        Collider{ AABB::FromPositionScale(Vector3(0.0f, 3.1f, 5.6f), Vector3(10.0f, 5.0f, 1.0f)) }
+    );
+    m_scene.AddComponent(
+        entities[2],
+        Mesh{ MeshLoader::GetMeshID("Cube") }
+    );
+    m_aabbTree.InsertLeaf(entities[2], AABB::FromPositionScale(Vector3(0.0f, 3.1, 5.6f), Vector3(10.0f, 5.0f, 1.0f)));
+
+
+    // ball
     m_scene.AddComponent(
         entities[1],
         Particle{ Vector3::Zero, Vector3::Zero, 1 / 2.0f, 0.2f }
@@ -245,8 +282,11 @@ HRESULT DX11App::Init()
     );
     m_scene.AddComponent(
         entities[1],
-        Collider{ OBB(Vector3::Up * 5, Vector3(1.0f, 1.0f, 1.0f), Quaternion()) }
-        //Collider{ Sphere(Vector3::Up * 5, 0.5f) }
+        Collider{ Sphere(Vector3::Up * 5, 1.0f) }
+    );
+    m_scene.AddComponent(
+        entities[1],
+        Mesh{ MeshLoader::GetMeshID("Sphere") }
     );
     m_aabbTree.InsertLeaf(entities[1], AABB::FromPositionScale(Vector3::Zero, Vector3::One));
 
@@ -298,9 +338,6 @@ HRESULT DX11App::Init()
     instanceDataResource.pSysMem = m_instanceData.data();
 
     m_device->CreateBuffer(&instanceBufferDesc, &instanceDataResource, &m_instanceBuffer);
-
-    // load cube mesh
-    m_cubeMeshData = OBJLoader::Load("Models/Cube.obj", m_device, false);
 
     // initialise ImGui
     IMGUI_CHECKVERSION();
@@ -371,6 +408,7 @@ void DX11App::Update()
                 if constexpr (std::is_same_v<T, Sphere>)
                 {
                     m_aabbTree.UpdatePosition(entity, specificCollider.center);
+                    m_aabbTree.UpdateScale(entity, Vector3::One * 2.0f * specificCollider.radius);
                 }
                 else if constexpr (std::is_same_v<T, OBB>)
                 {
@@ -434,7 +472,7 @@ void DX11App::Update()
                 Vector3 inertiaB = Vector3::Cross(e2RigidBody->InverseInertiaTensor * Vector3::Cross(relativeB, info.collisionNormal), relativeB);
                 float angularEffect = Vector3::Dot(inertiaA + inertiaB, info.collisionNormal);
 
-                float restitution = 0.0f;//e1Particle->Restitution * e2Particle->Restitution;
+                float restitution = 0.1f;//e1Particle->Restitution * e2Particle->Restitution;
                 float j = (- (1.0f + restitution) * impulseForce) / (totalMass + angularEffect);
 
                 Vector3 fullImpulse = info.collisionNormal * j;
@@ -510,10 +548,12 @@ void DX11App::Update()
         if (!m_scene.ReachedEntityCap())
         {
             XMFLOAT3 camPos = m_camera->GetPosition();
+            XMFLOAT3 camDirection = m_camera->GetLook();
+
             Entity newEntity = m_scene.CreateEntity();
             m_scene.AddComponent(
                 newEntity,
-                Particle{ Vector3::Zero, Vector3::Zero, 1 / 2.0f, 0.2f}
+                Particle{ Vector3(camDirection.x, camDirection.y, camDirection.z) * 10.0f, Vector3::Zero, 1 / 2.0f, 0.2f}
             );
             m_scene.AddComponent(
                 newEntity,
@@ -534,7 +574,11 @@ void DX11App::Update()
             m_scene.AddComponent(
                 newEntity,
                 //Collider{ OBB(Vector3::Up * 5, Vector3(1.0f, 1.0f, 1.0f), Quaternion()) }
-                Collider{ Sphere(Vector3(camPos.x, camPos.y, camPos.z), 0.5f) }
+                Collider{ Sphere(Vector3(camPos.x, camPos.y, camPos.z), 1.0f) }
+            );
+            m_scene.AddComponent(
+                newEntity,
+                Mesh{ MeshLoader::GetMeshID("Sphere") }
             );
 
             m_aabbTree.InsertLeaf(newEntity, AABB::FromPositionScale(Vector3(camPos.x, camPos.y, camPos.z), Vector3::One));
@@ -631,18 +675,20 @@ void DX11App::Draw()
     Quaternion testQ = Quaternion::Slerp(qA, qB, m_timer.GetElapsedTime() / 10.0);
     XMMATRIX transform = XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMATRIX(testQ.toRotationMatrix()) * XMMatrixTranslation(particle->Position.x, particle->Position.y, particle->Position.z);*/
 
-    m_scene.ForEach<Transform>([&](Entity entity, Transform* transform) {
+    m_scene.ForEach<Transform, Mesh>([&](Entity entity, Transform* transform, Mesh* mesh) {
         XMMATRIX matrixTransform = XMMatrixScaling(transform->Scale.x, transform->Scale.y, transform->Scale.z) * XMMATRIX(transform->Rotation.toRotationMatrix()) * XMMatrixTranslation(transform->Position.x, transform->Position.y, transform->Position.z);
         transformData.World = XMMatrixTranspose(matrixTransform);
         sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
 
-        UINT stride = m_cubeMeshData.VBStride;
-        UINT offset = m_cubeMeshData.VBOffset;
+        MeshData meshData = MeshLoader::GetMesh(mesh->MeshId);
 
-        m_immediateContext->IASetVertexBuffers(0, 1, &m_cubeMeshData.VertexBuffer, &stride, &offset);
-        m_immediateContext->IASetIndexBuffer(m_cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+        UINT stride = meshData.VBStride;
+        UINT offset = meshData.VBOffset;
 
-        m_immediateContext->DrawIndexed(m_cubeMeshData.IndexCount, 0, 0);
+        m_immediateContext->IASetVertexBuffers(0, 1, &meshData.VertexBuffer, &stride, &offset);
+        m_immediateContext->IASetIndexBuffer(meshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+
+        m_immediateContext->DrawIndexed(meshData.IndexCount, 0, 0);
     });
 
     //// draw cube
@@ -658,6 +704,8 @@ void DX11App::Draw()
     sm->SetActiveShader("DebugBoxShaders");
     m_immediateContext->RSSetState(m_wireframeRasterizerState);
 
+    MeshData cubeMeshData = MeshLoader::GetMesh("Cube");
+
     for (const Node& node : m_aabbTree.GetNodes())
     {
         if (true)// m_aabbTree.GetNode(node.child1).isLeaf || m_aabbTree.GetNode(node.child2).isLeaf)
@@ -670,13 +718,13 @@ void DX11App::Draw()
             transformData.World = XMMatrixTranspose(transform);
             sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
 
-            UINT stride = m_cubeMeshData.VBStride;
-            UINT offset = m_cubeMeshData.VBOffset;
+            UINT stride = cubeMeshData.VBStride;
+            UINT offset = cubeMeshData.VBOffset;
 
-            m_immediateContext->IASetVertexBuffers(0, 1, &m_cubeMeshData.VertexBuffer, &stride, &offset);
-            m_immediateContext->IASetIndexBuffer(m_cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+            m_immediateContext->IASetVertexBuffers(0, 1, &cubeMeshData.VertexBuffer, &stride, &offset);
+            m_immediateContext->IASetIndexBuffer(cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
-            m_immediateContext->DrawIndexed(m_cubeMeshData.IndexCount, 0, 0);
+            m_immediateContext->DrawIndexed(cubeMeshData.IndexCount, 0, 0);
         }
     }
 

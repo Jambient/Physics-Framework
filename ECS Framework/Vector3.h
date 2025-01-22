@@ -19,6 +19,7 @@ public:
 	static const Vector3 Zero;
 
 	Vector3() : x(0.0f), y(0.0f), z(0.0f) {};
+	Vector3(float s) : x(s), y(s), z(s) {};
 	Vector3(float x, float y, float z) : x(x), y(y), z(z) {};
 
 	float magnitude() const
@@ -115,6 +116,17 @@ public:
 		return Vector3(-x, -y, -z);
 	}
 
+	float& operator[](int index) {
+		switch (index)
+		{
+		case 0: return x;
+		case 1: return y;
+		case 2: return z;
+		default:
+			throw std::out_of_range("Index out of range for Vector3");
+		}
+	}
+
 	const float& operator[](int index) const {
 		switch (index) 
 		{
@@ -189,6 +201,11 @@ public:
 			a.y > b.y ? a.y : b.y,
 			a.z > b.z ? a.z : b.z
 		);
+	}
+
+	static inline Vector3 Clamp(const Vector3& v, const Vector3& minV, const Vector3& maxV)
+	{
+		return Min(maxV, Max(minV, v));
 	}
 
 private:
