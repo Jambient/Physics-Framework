@@ -161,7 +161,11 @@ void AABBTree::TriggerUpdate(Entity entity)
 	if (leafIndex == NULL_INDEX) { return; }
 
 	// check if the leaf node actually needs updating
-	if (!NeedsUpdate(leafIndex)) { return; }
+	if (!NeedsUpdate(leafIndex)) 
+	{ 
+		RefitFromNode(GetNode(leafIndex).parentIndex);
+		return; 
+	}
 
 	AABB previousBox = GetNode(leafIndex).box;
 
@@ -467,11 +471,6 @@ void AABBTree::RefitFromNode(int index, bool rotateTree)
 		Node& child2 = GetNode(currentNode.child2);
 
 		currentNode.box = AABB::Union(child1.box, child2.box);
-		
-		if (rotateTree)
-		{
-			//Rotate(index);
-		}
 
 		index = currentNode.parentIndex;
 	}

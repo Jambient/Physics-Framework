@@ -21,6 +21,11 @@ public:
                     {
                         specificCollider.Update(transform->Position, transform->Scale, transform->Rotation);
                     }
+                    else if constexpr (std::is_same_v<T, AABB>)
+                    {
+                        specificCollider.updatePosition(transform->Position);
+                        specificCollider.updateScale(transform->Scale);
+                    }
                     }, collider->Collider);
 			});
 	}
