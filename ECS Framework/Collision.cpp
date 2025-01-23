@@ -364,7 +364,9 @@ void Collision::RegisterCollisionHandler(ColliderType typeA, ColliderType typeB,
     {
         dispatchTable[indexB][indexA] = [handler](const ColliderBase& a, const ColliderBase& b)
         {
-            return handler(b, a);
+            CollisionManifold manifold = handler(b, a);
+            //manifold.collisionNormal = -manifold.collisionNormal;
+            return manifold;
         };
     }
 }

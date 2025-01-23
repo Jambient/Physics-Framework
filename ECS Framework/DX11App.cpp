@@ -246,7 +246,7 @@ HRESULT DX11App::Init()
     // walls
     m_scene.AddComponent(
         entities[2],
-        Particle{ Vector3::Zero, Vector3::Zero, 0.0f, 0.1f }
+        Particle{ Vector3::Zero, Vector3::Zero, 1 / 100.0f, 0.1f }
     );
     m_scene.AddComponent(
         entities[2],
@@ -442,14 +442,14 @@ void DX11App::Update()
             CollisionManifold info = Collision::Collide(e1Collider, e2Collider);
             if (!info) { continue; } // continue if narrow phase check fails
 
-            // Positional correction with slop
-            const float k_slop = 0.01f;
-            const float correctionFactor = 0.8f;
-            float correctedPenetration = max(info.penetrationDepth - k_slop, 0.0f);
+            std::cout << "COLLISION INFO: " << std::endl;
+            std::cout << "normal: " << info.collisionNormal << std::endl;
+            std::cout << "depth: " << info.penetrationDepth << std::endl;
+            std::cout << "--------------" << std::endl;
 
             float totalMass = e1Particle->InverseMass + e2Particle->InverseMass;
-            e1Transform->Position -= info.collisionNormal * correctedPenetration * correctionFactor * (e1Particle->InverseMass / totalMass);
-            e2Transform->Position += info.collisionNormal * correctedPenetration * correctionFactor * (e2Particle->InverseMass / totalMass);
+            e1Transform->Position -= info.collisionNormal * info.penetrationDepth * (e1Particle->InverseMass / totalMass);
+            e2Transform->Position += info.collisionNormal * info.penetrationDepth * (e2Particle->InverseMass / totalMass);
 
             for (const Vector3& contactPoint : info.contactPoints)
             {
@@ -466,13 +466,13 @@ void DX11App::Update()
                 Vector3 contactVelocity = fullVelocityB - fullVelocityA;
 
                 float impulseForce = Vector3::Dot(contactVelocity, info.collisionNormal);
-                if (impulseForce > 0.0f) continue; // Skip if objects are separating
+                //if (impulseForce > 0.0f) continue; // Skip if objects are separating
 
                 Vector3 inertiaA = Vector3::Cross(e1RigidBody->InverseInertiaTensor * Vector3::Cross(relativeA, info.collisionNormal), relativeA);
                 Vector3 inertiaB = Vector3::Cross(e2RigidBody->InverseInertiaTensor * Vector3::Cross(relativeB, info.collisionNormal), relativeB);
                 float angularEffect = Vector3::Dot(inertiaA + inertiaB, info.collisionNormal);
 
-                float restitution = 0.1f;//e1Particle->Restitution * e2Particle->Restitution;
+                float restitution = 0.6f;//e1Particle->Restitution * e2Particle->Restitution;
                 float j = (- (1.0f + restitution) * impulseForce) / (totalMass + angularEffect);
 
                 Vector3 fullImpulse = info.collisionNormal * j;
@@ -553,7 +553,7 @@ void DX11App::Update()
             Entity newEntity = m_scene.CreateEntity();
             m_scene.AddComponent(
                 newEntity,
-                Particle{ Vector3(camDirection.x, camDirection.y, camDirection.z) * 10.0f, Vector3::Zero, 1 / 2.0f, 0.2f}
+                Particle{ Vector3::Zero, Vector3::Zero, 1 / 2.0f, 0.2f}
             );
             m_scene.AddComponent(
                 newEntity,
@@ -582,6 +582,8 @@ void DX11App::Update()
             );
 
             m_aabbTree.InsertLeaf(newEntity, AABB::FromPositionScale(Vector3(camPos.x, camPos.y, camPos.z), Vector3::One));
+
+            m_scene.GetComponent<Particle>(newEntity)->ApplyLinearImpulse(Vector3(camDirection.x, camDirection.y, camDirection.z) * 10.0f);
         }
     }
 
