@@ -9,13 +9,28 @@ public:
 	float y;
 	float z;
 
+	// shorthand for (0, 0, 1)
 	static const Vector3 Forward;
+
+	// shorthand for (0, 0, -1)
 	static const Vector3 Back;
+
+	// shorthand for (-1, 0, 0)
 	static const Vector3 Left;
+
+	// shorthand for (1, 0, 0)
 	static const Vector3 Right;
+
+	// shorthand for (0, 1, 0)
 	static const Vector3 Up;
+
+	// shorthand for (0, -1, 0)
 	static const Vector3 Down;
+
+	// shorthand for (1, 1, 1)
 	static const Vector3 One;
+
+	// shorthand for (0, 0, 0)
 	static const Vector3 Zero;
 
 	Vector3() : x(0.0f), y(0.0f), z(0.0f) {};

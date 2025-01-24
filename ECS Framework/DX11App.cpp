@@ -267,7 +267,7 @@ HRESULT DX11App::Init()
     m_aabbTree.InsertLeaf(entities[2], AABB::FromPositionScale(Vector3(0.0f, 3.1, 5.6f), Vector3(10.0f, 5.0f, 1.0f)));
 
 
-    // ball
+    // cube
     m_scene.AddComponent(
         entities[1],
         Particle{ Vector3::Zero, Vector3::Zero, 1 / 2.0f, 0.8f }
@@ -282,13 +282,13 @@ HRESULT DX11App::Init()
     );
     m_scene.AddComponent(
         entities[1],
-        Collider{ Sphere(Vector3::Up * 5, 1.0f) }
+        Collider{ AABB::FromPositionScale(Vector3::Up * 5, Vector3::One) }
     );
     m_scene.AddComponent(
         entities[1],
-        Mesh{ MeshLoader::GetMeshID("Sphere") }
+        Mesh{ MeshLoader::GetMeshID("Cube") }
     );
-    m_aabbTree.InsertLeaf(entities[1], AABB::FromPositionScale(Vector3::Zero, Vector3::One));
+    m_aabbTree.InsertLeaf(entities[1], AABB::FromPositionScale(Vector3::Up * 5.0f, Vector3::One));
 
     //for (Entity entity : entities)
     //{
@@ -456,6 +456,8 @@ void DX11App::Update()
             e1Transform->Position -= info.collisionNormal * info.penetrationDepth * (e1Particle->InverseMass / totalMass);
             e2Transform->Position += info.collisionNormal * info.penetrationDepth * (e2Particle->InverseMass / totalMass);
 
+            float j;
+
             for (const Vector3& contactPoint : info.contactPoints)
             {
                 //std::cout << contactPoint << std::endl;
@@ -478,7 +480,7 @@ void DX11App::Update()
                 float angularEffect = Vector3::Dot(inertiaA + inertiaB, info.collisionNormal);
 
                 float restitution = e1Particle->Restitution * e2Particle->Restitution;
-                float j = (- (1.0f + restitution) * impulseForce) / (totalMass + angularEffect);
+                j = (- (1.0f + restitution) * impulseForce) / (totalMass + angularEffect);
 
                 Vector3 fullImpulse = info.collisionNormal * j;
 
@@ -487,6 +489,56 @@ void DX11App::Update()
 
                 e1RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeA, -fullImpulse));
                 e2RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeB, fullImpulse));
+            }
+
+            // friction impulses
+            for (const Vector3& contactPoint : info.contactPoints)
+            {
+                Vector3 relativeA = contactPoint - e1Transform->Position;
+                Vector3 relativeB = contactPoint - e2Transform->Position;
+
+                Vector3 angVelocityA = Vector3::Cross(e1RigidBody->AngularVelocity, relativeA);
+                Vector3 angVelocityB = Vector3::Cross(e2RigidBody->AngularVelocity, relativeB);
+
+                Vector3 fullVelocityA = e1Particle->LinearVelocity + angVelocityA;
+                Vector3 fullVelocityB = e2Particle->LinearVelocity + angVelocityB;
+                Vector3 contactVelocity = fullVelocityB - fullVelocityA;
+
+                Vector3 tangent = contactVelocity - info.collisionNormal * Vector3::Dot(contactVelocity, info.collisionNormal);
+                if (tangent.magnitude() < 1e-6) { continue; }
+
+                tangent.normalize();
+
+                float impulseForce = Vector3::Dot(contactVelocity, tangent);
+                //if (impulseForce > 0.0f) continue; // Skip if objects are separating
+
+                Vector3 inertiaA = Vector3::Cross(e1RigidBody->InverseInertiaTensor * Vector3::Cross(relativeA, tangent), relativeA);
+                Vector3 inertiaB = Vector3::Cross(e2RigidBody->InverseInertiaTensor * Vector3::Cross(relativeB, tangent), relativeB);
+                float angularEffect = Vector3::Dot(inertiaA + inertiaB, tangent);
+
+                float jt = -impulseForce / (totalMass + angularEffect);
+
+                // temporary friction values
+                // to calculate properly - add frictions from both bodies and average them
+                float sf = 0.6f; // static friction
+                float df = 0.3f; // dynamic friction
+
+                Vector3 fullImpulseFriction;
+
+                if (fabsf(jt) <= j * sf)
+                {
+                    fullImpulseFriction = tangent * jt;
+                }
+                else
+                {
+                    fullImpulseFriction = tangent * -j * df;
+                }
+
+                e1Particle->ApplyLinearImpulse(-fullImpulseFriction);
+                e2Particle->ApplyLinearImpulse(fullImpulseFriction);
+
+                e1RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeA, -fullImpulseFriction));
+                e2RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeB, fullImpulseFriction));
             }
         }
     }
@@ -533,15 +585,16 @@ void DX11App::Update()
                 Transform{ Vector3(camPos.x, camPos.y, camPos.z), Quaternion(), Vector3(1.0f, 1.0f, 1.0f) }
             );
 
-            Vector3 inverseCubeInertia = Vector3(
-                (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f),
-                (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f),
-                (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f)
+            float intertiaValue = (2.0f / 5.0f) * 2.0f * (1.0f * 1.0f);
+            Vector3 inverseSphereInertia = Vector3(
+                intertiaValue,
+                intertiaValue,
+                intertiaValue
             ).reciprocal();
 
             m_scene.AddComponent(
                 newEntity,
-                RigidBody{ Vector3::Zero, Vector3::Zero, inverseCubeInertia, Matrix3(inverseCubeInertia) }
+                RigidBody{ Vector3::Zero, Vector3::Zero, inverseSphereInertia, Matrix3(inverseSphereInertia) }
             );
 
             m_scene.AddComponent(

@@ -48,6 +48,13 @@ struct RigidBody
 	}
 };
 
+struct PhysicsMaterial
+{
+	float StaticFriction = 0.6f;
+	float DynamicFriction = 0.4f;
+	// possible coefficient of restitution in here as well
+};
+
 struct Mesh
 {
 	int MeshId;
