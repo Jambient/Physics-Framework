@@ -10,6 +10,7 @@
 #include "Timer.h"
 #include "Vector3.h"
 #include "AABBTree.h"
+#include "Material.h"
 #include <vector>
 
 struct InstanceData
@@ -77,9 +78,13 @@ private:
 	ID3D11RasterizerState* m_defaultRasterizerState;
 	ID3D11SamplerState* m_defaultSamplerState;
 
+	ID3D11DepthStencilState* m_skyboxDepthState;
 	ID3D11RasterizerState* m_wireframeRasterizerState;
 
 	Entity m_selectedEntity = INVALID_ENTITY;
+
+	ID3D11ShaderResourceView* m_crateMaterialSRV;
+	ID3D11ShaderResourceView* m_skyboxSRV;
 
 	/**
 	 * @brief Builds a ray pointing towards the provided position on the screen from the camera's position

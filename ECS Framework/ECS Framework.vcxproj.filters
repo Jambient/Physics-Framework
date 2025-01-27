@@ -132,12 +132,24 @@
     <ClInclude Include="MeshLoader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Material.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DDSTextureLoader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="SimpleShaders.hlsl">
       <Filter>Shaders</Filter>
     </None>
     <None Include="DebugBoxShaders.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="CookTorrence.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Skybox.hlsl">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>
@@ -203,6 +215,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="MeshLoader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Material.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DDSTextureLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

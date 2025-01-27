@@ -1,8 +1,10 @@
+#include "CookTorrence.hlsl"
 #include "Lighting.hlsl"
 
 #define MAX_LIGHTS 10
 
 SamplerState bilinearSampler : register(s0);
+Texture2DArray material : register(t0);
 
 cbuffer TransformBuffer : register(b0)
 {
@@ -24,6 +26,12 @@ cbuffer LightBuffer : register(b2)
     int LightCount;
 }
 
+cbuffer ObjectBuffer : register(b3)
+{
+    bool HasTexture;
+    float3 _padding2;
+}
+
 struct VS_Out
 {
     float4 position : SV_POSITION;
@@ -32,7 +40,6 @@ struct VS_Out
     float2 texCoord : TEXCOORD;
     float3 tangent : TANGENT;
     float3 bitangent : BINORMAL;
-    float3 color : COLOR;
 };
 
 VS_Out VS_main(float3 Position : POSITION, float3 Normal : NORMAL, float2 TexCoord : TEXCOORD, float4 Tangent : TANGENT)
@@ -62,14 +69,24 @@ float4 PS_main(VS_Out input) : SV_TARGET
     float3x3 TBN = float3x3(input.tangent, input.bitangent, normal);
     float3 viewDir = normalize(CameraPosition - input.worldPosition);
     
-    float3 finalColor = (float3)AmbientLight;
+    if (HasTexture)
+    {
+        float3 sampledNormal = normalize(2.0f * material.Sample(bilinearSampler, float3(input.texCoord, TEXTURETYPE_NORMAL)).rgb - 1.0f);
+        normal = normalize(mul(sampledNormal, TBN));
+    }
+    
+    float3 finalColor = AmbientLight;
     
     for (int i = 0; i < LightCount; i++)
     {
         Light lightData = Lights[i];
         float3 lightDir;
-        
         float3 lightContribution = CalculateLightContribution(lightData, input.worldPosition, normal, viewDir, lightDir);
+        
+        if (HasTexture)
+        {
+            lightContribution *= CalculateReflectanceColor(bilinearSampler, material, AmbientLight.rgb, input.texCoord, viewDir, lightDir, normal);
+        }
         
         finalColor += lightContribution;
     }

@@ -72,3 +72,9 @@ struct LightBuffer
 	UINT LightCount;
 	XMFLOAT3 _padding;
 };
+
+struct ObjectBuffer
+{
+	bool HasTexture;
+	XMFLOAT3 _padding;
+};

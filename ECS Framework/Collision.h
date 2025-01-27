@@ -2,13 +2,23 @@
 #include "Structures.h"
 #include "Colliders.h"
 #include <functional>
+#include "Plane.h"
 
-// data retrieved from intersection tests
-struct CollisionData
+// temporary structs
+struct ContactPoint
 {
-	float penetration;
+	Vector3 localA;
+	Vector3 localB;
 	Vector3 normal;
-	Vector3 point;
+	float penetration;
+};
+
+struct CollisionInfo
+{
+	Entity entityA;
+	Entity entityB;
+
+	ContactPoint point;
 };
 
 // full manifold derived from collision data

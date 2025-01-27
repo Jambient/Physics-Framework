@@ -11,6 +11,7 @@
 #include <random>
 #include <sstream>
 #include <format>
+#include "DDSTextureLoader.h"
 
 #define ThrowIfFailed(x)  if (FAILED(x)) { throw new std::bad_exception;}
 
@@ -85,6 +86,13 @@ HRESULT DX11App::Init()
     hr = m_device->CreateSamplerState(&bilinearSamplerDesc, &m_defaultSamplerState);
     if (FAILED(hr)) return hr;
 
+    // create skybox depth buffer state
+    D3D11_DEPTH_STENCIL_DESC dsDesc;
+    ZeroMemory(&dsDesc, sizeof(dsDesc));
+    dsDesc.DepthEnable = true;
+    dsDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+    m_device->CreateDepthStencilState(&dsDesc, &m_skyboxDepthState);
+
     // create the layout for the default input used in most shaders
     D3D11_INPUT_ELEMENT_DESC defaultInputLayout[] =
     {
@@ -117,6 +125,8 @@ HRESULT DX11App::Init()
     ThrowIfFailed(hr);
     hr = sm->CreateConstantBuffer<LightBuffer>("LightBuffer");
     ThrowIfFailed(hr);
+    hr = sm->CreateConstantBuffer<ObjectBuffer>("ObjectBuffer");
+    ThrowIfFailed(hr);
 
     // load the shaders from file
     // simple shader:
@@ -130,6 +140,7 @@ HRESULT DX11App::Init()
     sm->RegisterConstantBuffer("SimpleShaders", "TransformBuffer", 0);
     sm->RegisterConstantBuffer("SimpleShaders", "GlobalBuffer", 1);
     sm->RegisterConstantBuffer("SimpleShaders", "LightBuffer", 2);
+    sm->RegisterConstantBuffer("SimpleShaders", "ObjectBuffer", 3);
 
     // debug shader:
     hr = sm->LoadVertexShader(m_windowHandle, "DebugBoxShaders", L"DebugBoxShaders.hlsl");
@@ -140,6 +151,16 @@ HRESULT DX11App::Init()
     if (FAILED(hr)) { return hr; }
 
     sm->RegisterConstantBuffer("DebugBoxShaders", "TransformBuffer", 0);
+
+    // skybox shader:
+    hr = sm->LoadVertexShader(m_windowHandle, "SkyboxShader", L"Skybox.hlsl");
+    if (FAILED(hr)) { return hr; }
+    hr = sm->LoadPixelShader(m_windowHandle, "SkyboxShader", L"Skybox.hlsl");
+    if (FAILED(hr)) { return hr; }
+    hr = sm->CreateInputLayout("SkyboxShader", defaultInputLayout, ARRAYSIZE(defaultInputLayout));
+    if (FAILED(hr)) { return hr; }
+
+    sm->RegisterConstantBuffer("SkyboxShader", "TransformBuffer", 0);
 
     // store the default ambient light into the global buffer
     m_globalBufferData.AmbientLight = XMFLOAT4(0.05f, 0.05f, 0.05f, 1.0f);
@@ -155,14 +176,38 @@ HRESULT DX11App::Init()
     Light directionalLight;
     directionalLight.Type = LightType::DIRECTIONAL;
     directionalLight.Color = XMFLOAT3(0.5f, 0.5f, 0.5f);
-    directionalLight.Direction = XMFLOAT3(0.0f, 0.0f, 1.0f);
+    directionalLight.Direction = XMFLOAT3(0.0f, -0.5f, 1.0f);
+
+    Light spotLight;
+    spotLight.Type = LightType::POINT;
+    spotLight.Color = XMFLOAT3(0.5f, 0.5f, 0.5f);
+    spotLight.Position = XMFLOAT3(0.0f, 3.0f, 0.0f);
+    //spotLight.Direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
 
     m_lightBufferData.Lights[0] = directionalLight;
-    m_lightBufferData.LightCount = 1;
+    m_lightBufferData.Lights[1] = spotLight;
+    m_lightBufferData.LightCount = 2;
+
+    ObjectBuffer objectBuffer;
+    objectBuffer.HasTexture = true;
+
+    sm->SetConstantBuffer<ObjectBuffer>("ObjectBuffer", objectBuffer);
 
     // load meshes
     MeshLoader::LoadMesh("Models/Cube.obj", "Cube", m_device, false);
+    MeshLoader::LoadMesh("Models/InvertedCube.obj", "InvertedCube", m_device, false);
     MeshLoader::LoadMesh("Models/Sphere.obj", "Sphere", m_device, false);
+
+    // load textures
+    Material* rockMaterial = new Material();
+    rockMaterial->LoadTexture(m_device, TextureType::ALBEDO, L"Textures\\Materials\\Crate\\COLOR.dds");
+    rockMaterial->LoadTexture(m_device, TextureType::NORMAL, L"Textures\\Materials\\Crate\\NORMAL.dds");
+    rockMaterial->LoadTexture(m_device, TextureType::AMBIENT, L"Textures\\Materials\\Crate\\AO.dds");
+    rockMaterial->LoadTexture(m_device, TextureType::ROUGHNESS, L"Textures\\Materials\\Crate\\ROUGHNESS.dds");
+    rockMaterial->LoadTexture(m_device, TextureType::HEIGHT, L"Textures\\Materials\\Crate\\HEIGHT.dds");
+
+    m_crateMaterialSRV = rockMaterial->GetMaterialAsTextureArray(m_device, m_immediateContext);
+    DirectX::CreateDDSTextureFromFile(m_device, L"Textures\\Skyboxes\\MountainSkybox.dds", nullptr, &m_skyboxSRV);
 
     // initialise and build the scene
     m_scene.Init();
@@ -223,7 +268,7 @@ HRESULT DX11App::Init()
 
     m_scene.AddComponent(
         entities[0],
-        Particle{ Vector3::Zero, Vector3::Zero, 0.0f, 0.15f }
+        Particle{ Vector3::Zero, Vector3::Zero, 0.0f, 0.6f }
     );
     m_scene.AddComponent(
         entities[0],
@@ -235,7 +280,8 @@ HRESULT DX11App::Init()
     );
     m_scene.AddComponent(
         entities[0],
-        Collider{ AABB::FromPositionScale(Vector3::Zero, Vector3(10.0f, 1.0f, 10.0f)) }
+        Collider{ OBB(Vector3::Zero, Vector3(10.0f, 1.0f, 10.0f), Quaternion()) }
+        //Collider{ AABB::FromPositionScale(Vector3::Zero, Vector3(10.0f, 1.0f, 10.0f)) }
     );
     m_scene.AddComponent(
         entities[0],
@@ -282,7 +328,8 @@ HRESULT DX11App::Init()
     );
     m_scene.AddComponent(
         entities[1],
-        Collider{ AABB::FromPositionScale(Vector3::Up * 5, Vector3::One) }
+        Collider{ OBB(Vector3::Up * 5.0f, Vector3::One, Quaternion()) }
+        //Collider{ AABB::FromPositionScale(Vector3::Up * 5, Vector3::One) }
     );
     m_scene.AddComponent(
         entities[1],
@@ -492,54 +539,54 @@ void DX11App::Update()
             }
 
             // friction impulses
-            for (const Vector3& contactPoint : info.contactPoints)
-            {
-                Vector3 relativeA = contactPoint - e1Transform->Position;
-                Vector3 relativeB = contactPoint - e2Transform->Position;
+            //for (const Vector3& contactPoint : info.contactPoints)
+            //{
+            //    Vector3 relativeA = contactPoint - e1Transform->Position;
+            //    Vector3 relativeB = contactPoint - e2Transform->Position;
 
-                Vector3 angVelocityA = Vector3::Cross(e1RigidBody->AngularVelocity, relativeA);
-                Vector3 angVelocityB = Vector3::Cross(e2RigidBody->AngularVelocity, relativeB);
+            //    Vector3 angVelocityA = Vector3::Cross(e1RigidBody->AngularVelocity, relativeA);
+            //    Vector3 angVelocityB = Vector3::Cross(e2RigidBody->AngularVelocity, relativeB);
 
-                Vector3 fullVelocityA = e1Particle->LinearVelocity + angVelocityA;
-                Vector3 fullVelocityB = e2Particle->LinearVelocity + angVelocityB;
-                Vector3 contactVelocity = fullVelocityB - fullVelocityA;
+            //    Vector3 fullVelocityA = e1Particle->LinearVelocity + angVelocityA;
+            //    Vector3 fullVelocityB = e2Particle->LinearVelocity + angVelocityB;
+            //    Vector3 contactVelocity = fullVelocityB - fullVelocityA;
 
-                Vector3 tangent = contactVelocity - info.collisionNormal * Vector3::Dot(contactVelocity, info.collisionNormal);
-                if (tangent.magnitude() < 1e-6) { continue; }
+            //    Vector3 tangent = contactVelocity - info.collisionNormal * Vector3::Dot(contactVelocity, info.collisionNormal);
+            //    if (tangent.magnitude() < 1e-6) { continue; }
 
-                tangent.normalize();
+            //    tangent.normalize();
 
-                float impulseForce = Vector3::Dot(contactVelocity, tangent);
-                //if (impulseForce > 0.0f) continue; // Skip if objects are separating
+            //    float impulseForce = Vector3::Dot(contactVelocity, tangent);
+            //    //if (impulseForce > 0.0f) continue; // Skip if objects are separating
 
-                Vector3 inertiaA = Vector3::Cross(e1RigidBody->InverseInertiaTensor * Vector3::Cross(relativeA, tangent), relativeA);
-                Vector3 inertiaB = Vector3::Cross(e2RigidBody->InverseInertiaTensor * Vector3::Cross(relativeB, tangent), relativeB);
-                float angularEffect = Vector3::Dot(inertiaA + inertiaB, tangent);
+            //    Vector3 inertiaA = Vector3::Cross(e1RigidBody->InverseInertiaTensor * Vector3::Cross(relativeA, tangent), relativeA);
+            //    Vector3 inertiaB = Vector3::Cross(e2RigidBody->InverseInertiaTensor * Vector3::Cross(relativeB, tangent), relativeB);
+            //    float angularEffect = Vector3::Dot(inertiaA + inertiaB, tangent);
 
-                float jt = -impulseForce / (totalMass + angularEffect);
+            //    float jt = -impulseForce / (totalMass + angularEffect);
 
-                // temporary friction values
-                // to calculate properly - add frictions from both bodies and average them
-                float sf = 0.6f; // static friction
-                float df = 0.3f; // dynamic friction
+            //    // temporary friction values
+            //    // to calculate properly - add frictions from both bodies and average them
+            //    float sf = 0.6f; // static friction
+            //    float df = 0.3f; // dynamic friction
 
-                Vector3 fullImpulseFriction;
+            //    Vector3 fullImpulseFriction;
 
-                if (fabsf(jt) <= j * sf)
-                {
-                    fullImpulseFriction = tangent * jt;
-                }
-                else
-                {
-                    fullImpulseFriction = tangent * -j * df;
-                }
+            //    if (fabsf(jt) <= j * sf)
+            //    {
+            //        fullImpulseFriction = tangent * jt;
+            //    }
+            //    else
+            //    {
+            //        fullImpulseFriction = tangent * -j * df;
+            //    }
 
-                e1Particle->ApplyLinearImpulse(-fullImpulseFriction);
-                e2Particle->ApplyLinearImpulse(fullImpulseFriction);
+            //    e1Particle->ApplyLinearImpulse(-fullImpulseFriction);
+            //    e2Particle->ApplyLinearImpulse(fullImpulseFriction);
 
-                e1RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeA, -fullImpulseFriction));
-                e2RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeB, fullImpulseFriction));
-            }
+            //    e1RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeA, -fullImpulseFriction));
+            //    e2RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeB, fullImpulseFriction));
+            //}
         }
     }
 
@@ -578,7 +625,7 @@ void DX11App::Update()
             Entity newEntity = m_scene.CreateEntity();
             m_scene.AddComponent(
                 newEntity,
-                Particle{ Vector3::Zero, Vector3::Zero, 1 / 2.0f, 0.8f}
+                Particle{ Vector3::Zero, Vector3::Down * 9.8f, 1 / 2.0f, 0.8f}
             );
             m_scene.AddComponent(
                 newEntity,
@@ -708,6 +755,8 @@ void DX11App::Draw()
         transformData.World = XMMatrixTranspose(matrixTransform);
         sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
 
+        m_immediateContext->PSSetShaderResources(0, 1, &m_crateMaterialSRV);
+
         MeshData meshData = MeshLoader::GetMesh(mesh->MeshId);
 
         UINT stride = meshData.VBStride;
@@ -719,15 +768,7 @@ void DX11App::Draw()
         m_immediateContext->DrawIndexed(meshData.IndexCount, 0, 0);
     });
 
-    //// draw cube
-    //UINT strides[] = { m_cubeMeshData.VBStride, sizeof(InstanceData) };
-    //UINT offsets[] = { m_cubeMeshData.VBOffset, 0 };
-    //ID3D11Buffer* buffers[] = { m_cubeMeshData.VertexBuffer, m_instanceBuffer };
-
-    //m_immediateContext->IASetVertexBuffers(0, 2, buffers, strides, offsets);
-    //m_immediateContext->IASetIndexBuffer(m_cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
-
-    //m_immediateContext->DrawInstanced(m_cubeMeshData.VerticesCount, MAX_ENTITIES, 0, 0);
+    ////////// DEBUG BOX RENDERING ////////////
 
     sm->SetActiveShader("DebugBoxShaders");
     m_immediateContext->RSSetState(m_wireframeRasterizerState);
@@ -756,12 +797,39 @@ void DX11App::Draw()
         }
     }
 
+    //////// SKYBOX RENDERING ////////
+    ID3D11DepthStencilState* pOldDepthState = nullptr;
+    UINT oldStencilRef;
+    m_immediateContext->OMGetDepthStencilState(&pOldDepthState, &oldStencilRef);
+
+    m_immediateContext->RSSetState(m_defaultRasterizerState);
+    m_immediateContext->OMSetDepthStencilState(m_skyboxDepthState, 1);
+    MeshData skyboxMeshData = MeshLoader::GetMesh("InvertedCube");
+
+    sm->SetActiveShader("SkyboxShader");
+
+    UINT stride = skyboxMeshData.VBStride;
+    UINT offset = skyboxMeshData.VBOffset;
+
+    m_immediateContext->IASetVertexBuffers(0, 1, &skyboxMeshData.VertexBuffer, &stride, &offset);
+    m_immediateContext->IASetIndexBuffer(skyboxMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+    m_immediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    m_immediateContext->PSSetShaderResources(0, 1, &m_skyboxSRV);
+
+    m_immediateContext->DrawIndexed(skyboxMeshData.IndexCount, 0, 0);
+
+    m_immediateContext->OMSetDepthStencilState(pOldDepthState, oldStencilRef);
+
+    // Release the old depth state reference to avoid memory leak
+    if (pOldDepthState) pOldDepthState->Release();
+
     // draw imgui
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
     // present the backbuffer to the screen
-    m_swapChain->Present(0, 0);
+    m_swapChain->Present(1, 0);
 }
 
 void DX11App::OnMouseMove(WPARAM btnState, int x, int y)
