@@ -7,13 +7,15 @@ CollisionManifold NoOpCollision(const ColliderBase& a, const ColliderBase& b)
     throw std::logic_error("Collision between these shapes is not implemented");
 }
 
-float projectOntoAxis(const Vector3& axis, const OBB& obb) {
+float projectOntoAxis(const Vector3& axis, const OBB& obb) 
+{
     return obb.halfExtents.x * fabsf(Vector3::Dot(axis, obb.axes[0])) +
         obb.halfExtents.y * fabsf(Vector3::Dot(axis, obb.axes[1])) +
         obb.halfExtents.z * fabsf(Vector3::Dot(axis, obb.axes[2]));
 }
 
-bool overlapOnAxis(const OBB& obb1, const OBB& obb2, const Vector3& axis, float& overlap, Vector3& collisionNormal) {
+bool overlapOnAxis(const OBB& obb1, const OBB& obb2, const Vector3& axis, float& overlap, Vector3& collisionNormal) 
+{
     Vector3 normalizedAxis = axis.normalized();
     float projection1 = projectOntoAxis(normalizedAxis, obb1);
     float projection2 = projectOntoAxis(normalizedAxis, obb2);
@@ -118,6 +120,18 @@ CollisionManifold HandleSphereSphereCollision(const ColliderBase& a, const Colli
     Vector3 contactPoint = sphereA.center + manifold.collisionNormal * sphereA.radius;
     manifold.contactPoints.push_back(contactPoint);
     return manifold;
+}
+
+CollisionManifold HandleSphereOBBCollision(const ColliderBase& a, const ColliderBase& b)
+{
+    // cast colliders into correct type
+    const Sphere& sphereA = static_cast<const Sphere&>(a);
+    const OBB& sphereB = static_cast<const OBB&>(b);
+
+    CollisionManifold manifold;
+    manifold.isColliding = false;
+
+
 }
 
 CollisionManifold HandleAABBSphereCollision(const ColliderBase& a, const ColliderBase& b)

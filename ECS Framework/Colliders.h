@@ -156,6 +156,11 @@ struct OBB : public ColliderBase
 		return AABB(aabbMin, aabbMax);
 	}
 
+	Matrix3 GetTransform() const
+	{
+		return Matrix3::FromRotationVectors(axes[0], axes[1], axes[2]);
+	}
+
 	std::vector<Vector3> GetVertices() const {
 		std::vector<Vector3> vertices;
 		for (int x = -1; x <= 1; x += 2) {
