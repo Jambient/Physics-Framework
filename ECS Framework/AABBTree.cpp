@@ -16,7 +16,7 @@ struct QueueNode {
 AABBTree::AABBTree()
 {
 	unsigned int maxNodes = 2 * MAX_ENTITIES - 1;
-	for (int i = 0; i < maxNodes; i++)
+	for (unsigned int i = 0; i < maxNodes; i++)
 	{
 		m_availableNodes.push(i);
 	}

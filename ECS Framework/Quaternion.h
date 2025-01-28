@@ -282,12 +282,12 @@ public:
 	// angles are in radians -> roll, pitch, yaw
 	static Quaternion FromEulerAngles(const Vector3& angles)
 	{
-		double cr = cos(angles.x * 0.5);
-		double sr = sin(angles.x * 0.5);
-		double cp = cos(angles.y * 0.5);
-		double sp = sin(angles.y * 0.5);
-		double cy = cos(angles.z * 0.5);
-		double sy = sin(angles.z * 0.5);
+		float cr = cosf(angles.x * 0.5);
+		float sr = sinf(angles.x * 0.5);
+		float cp = cosf(angles.y * 0.5);
+		float sp = sinf(angles.y * 0.5);
+		float cy = cosf(angles.z * 0.5);
+		float sy = sinf(angles.z * 0.5);
 
 		return Quaternion(
 			cr * cp * cy + sr * sp * sy,

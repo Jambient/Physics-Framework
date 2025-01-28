@@ -314,22 +314,44 @@ HRESULT DX11App::Init()
 
 
     // cube
+    //m_scene.AddComponent(
+    //    entities[1],
+    //    Particle{ Vector3::Zero, Vector3::Zero, 1 / 2.0f, 0.8f }
+    //);
+    //m_scene.AddComponent(
+    //    entities[1],
+    //    Transform{ Vector3::Up * 5, Quaternion(), Vector3(1.0f, 1.0f, 1.0f)}
+    //);
+    //m_scene.AddComponent(
+    //    entities[1],
+    //    RigidBody{ Vector3::Zero, Vector3::Zero, inverseCubeInertia, Matrix3(inverseCubeInertia) }
+    //);
+    //m_scene.AddComponent(
+    //    entities[1],
+    //    Collider{ OBB(Vector3::Up * 5.0f, Vector3::One, Quaternion()) }
+    //    //Collider{ AABB::FromPositionScale(Vector3::Up * 5, Vector3::One) }
+    //);
+    //m_scene.AddComponent(
+    //    entities[1],
+    //    Mesh{ MeshLoader::GetMeshID("Cube") }
+    //);
+    //m_aabbTree.InsertLeaf(entities[1], AABB::FromPositionScale(Vector3::Up * 5.0f, Vector3::One));
+
     m_scene.AddComponent(
         entities[1],
-        Particle{ Vector3::Zero, Vector3::Zero, 1 / 2.0f, 0.8f }
+        Particle{ Vector3::Zero, Vector3::Zero, 0.0f, 0.8f }
     );
     m_scene.AddComponent(
         entities[1],
-        Transform{ Vector3::Up * 5, Quaternion(), Vector3(1.0f, 1.0f, 1.0f)}
+        Transform{ Vector3::Up * 5, Quaternion::FromEulerAngles(Vector3(0.0f, XMConvertToRadians(90.0f), XMConvertToRadians(30.0f))), Vector3(3.0f, 1.0f, 3.0f)}
     );
     m_scene.AddComponent(
         entities[1],
-        RigidBody{ Vector3::Zero, Vector3::Zero, inverseCubeInertia, Matrix3(inverseCubeInertia) }
+        RigidBody{ Vector3::Zero, Vector3::Zero, Vector3::Zero, Matrix3(Vector3::Zero) }
     );
     m_scene.AddComponent(
         entities[1],
         Collider{ OBB(Vector3::Up * 5.0f, Vector3::One, Quaternion()) }
-        //Collider{ AABB::FromPositionScale(Vector3::Up * 5, Vector3::One) }
     );
     m_scene.AddComponent(
         entities[1],
@@ -625,7 +647,7 @@ void DX11App::Update()
             Entity newEntity = m_scene.CreateEntity();
             m_scene.AddComponent(
                 newEntity,
-                Particle{ Vector3::Zero, Vector3::Down * 9.8f, 1 / 2.0f, 0.8f}
+                Particle{ Vector3::Zero, Vector3::Zero, 1 / 2.0f, 0.8f}
             );
             m_scene.AddComponent(
                 newEntity,
@@ -656,7 +678,7 @@ void DX11App::Update()
 
             m_aabbTree.InsertLeaf(newEntity, AABB::FromPositionScale(Vector3(camPos.x, camPos.y, camPos.z), Vector3::One));
 
-            m_scene.GetComponent<Particle>(newEntity)->ApplyLinearImpulse(Vector3(camDirection.x, camDirection.y, camDirection.z) * 10.0f);
+            //m_scene.GetComponent<Particle>(newEntity)->ApplyLinearImpulse(Vector3(camDirection.x, camDirection.y, camDirection.z) * 10.0f);
         }
     }
 

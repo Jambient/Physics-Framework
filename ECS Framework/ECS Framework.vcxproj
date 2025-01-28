@@ -153,6 +153,7 @@
     <ClInclude Include="imstb_truetype.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="Matrix3.h" />
+    <ClInclude Include="Matrix4.h" />
     <ClInclude Include="MeshLoader.h" />
     <ClInclude Include="OBJLoader.h" />
     <ClInclude Include="PhysicsSystem.h" />

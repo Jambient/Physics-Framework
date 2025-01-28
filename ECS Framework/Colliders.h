@@ -2,6 +2,7 @@
 #include "Vector3.h"
 #include "Quaternion.h"
 #include "Matrix3.h"
+#include "Matrix4.h"
 #include "Plane.h"
 #include <vector>
 
@@ -86,39 +87,6 @@ struct AABB : public ColliderBase
 	}
 };
 
-class Face
-{
-public:
-	std::vector<Vector3> vertices;
-
-	Face(const std::vector<Vector3>& vertices) : vertices(vertices) {}
-
-	// Compute the normal of the polygon assuming counterclockwise vertices
-	Vector3 GetNormal() const {
-		Vector3 edge1 = vertices[1] - vertices[0];
-		Vector3 edge2 = vertices[2] - vertices[0];
-		return Vector3::Cross(edge1, edge2).normalized();
-	}
-
-	// Create planes from the edges of the polygon
-	std::vector<Plane> GetEdgePlanes() const {
-		std::vector<Plane> edgePlanes;
-		Vector3 normal = GetNormal();
-		size_t vertexCount = vertices.size();
-
-		for (size_t i = 0; i < vertexCount; ++i) {
-			Vector3 v1 = vertices[i];
-			Vector3 v2 = vertices[(i + 1) % vertexCount];
-			Vector3 edge = v2 - v1;
-			Vector3 edgeNormal = Vector3::Cross(edge, normal).normalized();
-			edgePlanes.push_back(Plane(edgeNormal, v1));
-		}
-
-		return edgePlanes;
-	}
-};
-
-
 struct OBB : public ColliderBase
 {
 	Vector3 center;
@@ -156,57 +124,14 @@ struct OBB : public ColliderBase
 		return AABB(aabbMin, aabbMax);
 	}
 
-	Matrix3 GetTransform() const
+	Matrix4 GetRotationMatrix() const
 	{
-		return Matrix3::FromRotationVectors(axes[0], axes[1], axes[2]);
+		return Matrix4::FromRotationPosition(Matrix3::FromRotationVectors(axes[0], axes[1], axes[2]), Vector3::Zero);
 	}
 
-	std::vector<Vector3> GetVertices() const {
-		std::vector<Vector3> vertices;
-		for (int x = -1; x <= 1; x += 2) {
-			for (int y = -1; y <= 1; y += 2) {
-				for (int z = -1; z <= 1; z += 2) {
-					Vector3 offset = axes[0] * (x * halfExtents.x) +
-						axes[1] * (y * halfExtents.y) +
-						axes[2] * (z * halfExtents.z);
-					vertices.push_back(center + offset);
-				}
-			}
-		}
-		return vertices;
-	}
-
-	// Generate the 6 faces of the OBB as polygons
-	std::vector<Face> GetFaces() const {
-		std::vector<Face> faces;
-		Vector3 faceCenters[6] = {
-			center + axes[0] * halfExtents.x, center - axes[0] * halfExtents.x,
-			center + axes[1] * halfExtents.y, center - axes[1] * halfExtents.y,
-			center + axes[2] * halfExtents.z, center - axes[2] * halfExtents.z
-		};
-
-		Vector3 faceNormals[6] = {
-			axes[0], -axes[0],
-			axes[1], -axes[1],
-			axes[2], -axes[2]
-		};
-
-		for (int i = 0; i < 6; ++i) {
-			Vector3 normal = faceNormals[i];
-			Vector3 tangent1 = (i < 2) ? axes[1] : (i < 4) ? axes[2] : axes[0];
-			Vector3 tangent2 = Vector3::Cross(normal, tangent1).normalized();
-
-			std::vector<Vector3> vertices = {
-				faceCenters[i] + tangent1 * halfExtents.x + tangent2 * halfExtents.y,
-				faceCenters[i] - tangent1 * halfExtents.x + tangent2 * halfExtents.y,
-				faceCenters[i] - tangent1 * halfExtents.x - tangent2 * halfExtents.y,
-				faceCenters[i] + tangent1 * halfExtents.x - tangent2 * halfExtents.y
-			};
-
-			faces.push_back(Face(vertices));
-		}
-
-		return faces;
+	Matrix4 GetTransformMatrix() const
+	{
+		return Matrix4::FromRotationPosition(Matrix3::FromRotationVectors(axes[0], axes[1], axes[2]), center);
 	}
 
 	/*void GetMinMaxVertexOnAxis(const Vector3& axis, float& minOut, float& maxOut) const

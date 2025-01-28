@@ -1,11 +1,12 @@
 #pragma once
 #include "Vector3.h"
+#include <array>
 
 // row major matrix
 class Matrix3
 {
 public:
-	float values[9];
+	std::array<float, 9> values;
 
 	Matrix3(float m00, float m01, float m02, float m10, float m11, float m12, float m20, float m21, float m22)
 	{

@@ -122,16 +122,42 @@ CollisionManifold HandleSphereSphereCollision(const ColliderBase& a, const Colli
     return manifold;
 }
 
-CollisionManifold HandleSphereOBBCollision(const ColliderBase& a, const ColliderBase& b)
+CollisionManifold HandleOBBSphereCollision(const ColliderBase& a, const ColliderBase& b)
 {
-    // cast colliders into correct type
-    const Sphere& sphereA = static_cast<const Sphere&>(a);
-    const OBB& sphereB = static_cast<const OBB&>(b);
+    // Cast colliders into correct type
+    const OBB& boxA = static_cast<const OBB&>(a);
+    const Sphere& sphereB = static_cast<const Sphere&>(b);
 
     CollisionManifold manifold;
     manifold.isColliding = false;
 
+    // Transform sphere center to OBB local space
+    Vector3 localSphereCenter = boxA.GetRotationMatrix().transpose() * (sphereB.center - boxA.center);
 
+    Vector3 boxSize = boxA.halfExtents;
+
+    // Clamp point to OBB extents in local space
+    Vector3 closestPointLocal = Vector3::Clamp(localSphereCenter, -boxSize, boxSize);
+
+    // Back to world space
+    Vector3 closestPointOnBox = boxA.GetRotationMatrix() * closestPointLocal + boxA.center;
+
+    // Compute local displacement
+    Vector3 displacement = sphereB.center - closestPointOnBox;
+    float distance = displacement.magnitude();
+
+    if (distance < sphereB.radius)
+    {
+        manifold.isColliding = true;
+
+        manifold.collisionNormal = displacement.normalized();
+        manifold.penetrationDepth = sphereB.radius - distance;
+
+        Vector3 contactPoint = sphereB.center - manifold.collisionNormal * sphereB.radius;
+        manifold.contactPoints.push_back(contactPoint);
+    }
+
+    return manifold;
 }
 
 CollisionManifold HandleAABBSphereCollision(const ColliderBase& a, const ColliderBase& b)
@@ -249,6 +275,7 @@ void Collision::Init()
 
     // oriented box vs ...
     Collision::RegisterCollisionHandler(ColliderType::OrientedBox, ColliderType::OrientedBox, HandleObbObbCollision);
+    Collision::RegisterCollisionHandler(ColliderType::OrientedBox, ColliderType::Sphere, HandleOBBSphereCollision);
 
     // sphere vs ...
     Collision::RegisterCollisionHandler(ColliderType::Sphere, ColliderType::Sphere, HandleSphereSphereCollision);
