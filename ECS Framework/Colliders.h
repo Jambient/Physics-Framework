@@ -8,6 +8,7 @@
 
 enum class ColliderType
 {
+	Point,
 	Plane,
 	Sphere,
 	AlignedBox,
@@ -21,6 +22,13 @@ struct ColliderBase
 	ColliderType type;
 
 	ColliderBase(ColliderType type) : type(type) {}
+};
+
+struct Point : public ColliderBase
+{
+	Point(const Vector3& position) : position(position), ColliderBase(ColliderType::Point) {};
+
+	Vector3 position;
 };
 
 struct AABB : public ColliderBase

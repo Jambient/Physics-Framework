@@ -26,6 +26,10 @@ public:
                         specificCollider.updatePosition(transform->Position);
                         specificCollider.updateScale(transform->Scale);
                     }
+                    else if constexpr (std::is_same_v<T, Point>)
+                    {
+                        specificCollider.position = transform->Position;
+                    }
                     }, collider->Collider);
 			});
 	}

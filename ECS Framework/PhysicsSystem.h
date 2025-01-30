@@ -18,16 +18,17 @@ public:
 
 				assert(dt > 0.0);
 
-				Vector3 accel = particle->Force * particle->InverseMass;
-				//accel += Vector3::Down * 9.8f;
+				Vector3 newAcceleration = particle->Force * particle->InverseMass;
+				newAcceleration += Vector3::Down * 0.1f;
 
-				particle->LinearVelocity += accel * dt;
+				// velocity verlet integration
+				transform->Position += particle->LinearVelocity * dt + particle->LastLinearAcceleration * 0.5f * dt * dt;
 
-				// update linear position
-				transform->Position += particle->LinearVelocity * dt;
-
-				// impose drag
+				particle->LinearVelocity += (particle->LastLinearAcceleration + newAcceleration) * 0.5f * dt;
 				particle->LinearVelocity *= frameDamping;
+
+				particle->LastLinearAcceleration = newAcceleration;
+				particle->Force = Vector3::Zero;
 			});
 
 		// integrate angular movement

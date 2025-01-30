@@ -30,6 +30,59 @@ bool overlapOnAxis(const OBB& obb1, const OBB& obb2, const Vector3& axis, float&
     return false;
 }
 
+CollisionManifold HandlePointPointCollision(const ColliderBase& a, const ColliderBase& b)
+{
+    CollisionManifold manifold;
+    manifold.isColliding = false;
+    
+    return manifold;
+}
+
+CollisionManifold HandleOBBPointCollision(const ColliderBase& a, const ColliderBase& b)
+{
+    // cast colliders into correct type
+    const OBB& boxA = static_cast<const OBB&>(a);
+    const Point& pointB = static_cast<const Point&>(b);
+
+    CollisionManifold manifold;
+    manifold.isColliding = false;
+
+    // Transform the point to OBB local space
+    Vector3 localPoint = boxA.GetRotationMatrix().transpose() * (pointB.position - boxA.center);
+
+    // Check if the point is inside the OBB
+    if (std::abs(localPoint.x) <= boxA.halfExtents.x &&
+        std::abs(localPoint.y) <= boxA.halfExtents.y &&
+        std::abs(localPoint.z) <= boxA.halfExtents.z) {
+
+        manifold.isColliding = true;
+        manifold.contactPoints.push_back(pointB.position);
+
+        // Compute penetration depths along each axis
+        Vector3 penetration(
+            boxA.halfExtents.x - std::abs(localPoint.x),
+            boxA.halfExtents.y - std::abs(localPoint.y),
+            boxA.halfExtents.z - std::abs(localPoint.z)
+        );
+
+        // Find the minimum penetration axis (which determines the normal)
+        if (penetration.x <= penetration.y && penetration.x <= penetration.z) {
+            manifold.collisionNormal = boxA.axes[0] * (localPoint.x < 0 ? -1.0f : 1.0f);
+            manifold.penetrationDepth = penetration.x;
+        }
+        else if (penetration.y <= penetration.x && penetration.y <= penetration.z) {
+            manifold.collisionNormal = boxA.axes[1] * (localPoint.y < 0 ? -1.0f : 1.0f);
+            manifold.penetrationDepth = penetration.y;
+        }
+        else {
+            manifold.collisionNormal = boxA.axes[2] * (localPoint.z < 0 ? -1.0f : 1.0f);
+            manifold.penetrationDepth = penetration.z;
+        }
+    }
+
+    return manifold;
+}
+
 CollisionManifold HandleObbObbCollision(const ColliderBase& a, const ColliderBase& b)
 {
     // cast colliders into correct type
@@ -273,9 +326,12 @@ void Collision::Init()
         }
     }
 
+    Collision::RegisterCollisionHandler(ColliderType::Point, ColliderType::Point, HandlePointPointCollision);
+
     // oriented box vs ...
     Collision::RegisterCollisionHandler(ColliderType::OrientedBox, ColliderType::OrientedBox, HandleObbObbCollision);
     Collision::RegisterCollisionHandler(ColliderType::OrientedBox, ColliderType::Sphere, HandleOBBSphereCollision);
+    Collision::RegisterCollisionHandler(ColliderType::OrientedBox, ColliderType::Point, HandleOBBPointCollision);
 
     // sphere vs ...
     Collision::RegisterCollisionHandler(ColliderType::Sphere, ColliderType::Sphere, HandleSphereSphereCollision);

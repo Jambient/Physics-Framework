@@ -17,6 +17,9 @@ struct Particle
 	// Holds the linear velocity of the particle in world space.
 	Vector3 LinearVelocity = Vector3::Zero;
 
+	// Holds the last frames acceleration
+	Vector3 LastLinearAcceleration = Vector3::Zero;
+
 	// Holds the acceleration of the particle.
 	Vector3 Force = Vector3::Zero;
 
@@ -62,7 +65,7 @@ struct Mesh
 
 struct Collider
 {
-	std::variant<OBB, Sphere, AABB> Collider;
+	std::variant<OBB, Sphere, AABB, Point> Collider;
 
 	ColliderBase& GetColliderBase()
 	{
@@ -70,4 +73,12 @@ struct Collider
 			return static_cast<ColliderBase&>(concreteCollider); // Cast to base class
 			}, Collider);
 	}
+};
+
+struct Spring
+{
+	Entity Entity1;
+	Entity Entity2;
+	float RestLength;
+	float Stiffness;
 };

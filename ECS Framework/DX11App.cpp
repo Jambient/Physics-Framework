@@ -218,6 +218,7 @@ HRESULT DX11App::Init()
     m_scene.RegisterComponent<RigidBody>();
     m_scene.RegisterComponent<Collider>();
     m_scene.RegisterComponent<Mesh>();
+    m_scene.RegisterComponent<Spring>();
 
     m_physicsSystem = m_scene.RegisterSystem<PhysicsSystem>();
     m_physicsSystem->m_scene = &m_scene;
@@ -259,6 +260,7 @@ HRESULT DX11App::Init()
     entities[1] = m_scene.CreateEntity();
     entities[2] = m_scene.CreateEntity();
     entities[3] = m_scene.CreateEntity();
+    entities[4] = m_scene.CreateEntity();
 
     Vector3 inverseCubeInertia = Vector3(
         (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f),
@@ -268,7 +270,7 @@ HRESULT DX11App::Init()
 
     m_scene.AddComponent(
         entities[0],
-        Particle{ Vector3::Zero, Vector3::Zero, 0.0f, 0.6f }
+        Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 0.0f, 0.6f }
     );
     m_scene.AddComponent(
         entities[0],
@@ -292,7 +294,7 @@ HRESULT DX11App::Init()
     // walls
     m_scene.AddComponent(
         entities[2],
-        Particle{ Vector3::Zero, Vector3::Zero, 0.0f, 0.15f }
+        Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 0.0f, 0.15f }
     );
     m_scene.AddComponent(
         entities[2],
@@ -339,11 +341,12 @@ HRESULT DX11App::Init()
 
     m_scene.AddComponent(
         entities[1],
-        Particle{ Vector3::Zero, Vector3::Zero, 0.0f, 0.8f }
+        Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 0.0f, 0.8f }
     );
     m_scene.AddComponent(
         entities[1],
-        Transform{ Vector3::Up * 5, Quaternion::FromEulerAngles(Vector3(0.0f, XMConvertToRadians(90.0f), XMConvertToRadians(30.0f))), Vector3(3.0f, 1.0f, 3.0f)}
+        //Transform{ Vector3::Up * 5, Quaternion::FromEulerAngles(Vector3(0.0f, XMConvertToRadians(90.0f), XMConvertToRadians(30.0f))), Vector3(3.0f, 1.0f, 3.0f)}
+        Transform{ Vector3::Up * 5, Quaternion(), Vector3(3.0f, 1.0f, 3.0f) }
     );
     m_scene.AddComponent(
         entities[1],
@@ -359,41 +362,137 @@ HRESULT DX11App::Init()
     );
     m_aabbTree.InsertLeaf(entities[1], AABB::FromPositionScale(Vector3::Up * 5.0f, Vector3::One));
 
-    //for (Entity entity : entities)
-    //{
-    //    entity = m_scene.CreateEntity();
-    //    float velocityScale = (rand() % 100) / 100.0f;
-    //    Vector3 objectPosition = Vector3(randPosition(generator), randPosition(generator), randPosition(generator));
-    //    Vector3 objectVelocity = -objectPosition.normalized() * velocityScale;
-    //    //Vector3 objectVelocity = Vector3(randVelocity(generator), randVelocity(generator), randVelocity(generator));
+    // CLOTH
+    /*m_scene.AddComponent(
+        entities[3],
+        Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 1 / 1.5f, 0.8f }
+    );
+    m_scene.AddComponent(
+        entities[3],
+        Transform{ Vector3::Up * 3, Quaternion(), Vector3(1.0f, 1.0f, 1.0f)}
+    );
+    m_scene.AddComponent(
+        entities[3],
+        Mesh{ MeshLoader::GetMeshID("Cube") }
+    );
+    m_aabbTree.InsertLeaf(entities[3], AABB::FromPositionScale(Vector3::Up * 3.0f, Vector3::One));
 
-    //    m_scene.AddComponent(
-    //        entity,
-    //        Particle{ objectPosition, objectVelocity, Vector3::Zero, 0.99f, 1 / 2.0f}
-    //    );
+    m_scene.AddComponent(
+        entities[4],
+        Spring{ entities[1], entities[3], 3.0f, 0.5f }
+    );*/
 
-    //    m_aabbTree.InsertLeaf(entity, AABB::FromPositionScale(objectPosition, Vector3::One));
+    /*Entity currentEntityNum = m_scene.CreateEntity();
+    m_scene.AddComponent(
+        currentEntityNum,
+        Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 1 / 0.1f, 0.2f }
+    );
+    m_scene.AddComponent(
+        currentEntityNum,
+        Transform{ Vector3::Up * 10.0f, Quaternion(), Vector3(0.05f, 0.05f, 0.05f) }
+    );
+    m_scene.AddComponent(
+        currentEntityNum,
+        RigidBody{ Vector3::Zero, Vector3::Zero, Vector3::Zero, Matrix3(Vector3::Zero) }
+    );
+    m_scene.AddComponent(
+        currentEntityNum,
+        Collider{ Point(Vector3::Up * 10.0f) }
+    );
+    m_scene.AddComponent(
+        currentEntityNum,
+        Mesh{ MeshLoader::GetMeshID("Sphere") }
+    );
+    m_aabbTree.InsertLeaf(currentEntityNum, AABB::FromPositionScale(Vector3::Up * 10.0f, Vector3(0.1f, 0.1f, 0.1f)));*/
 
-    //    //std::cout << "Adding entity " << entity << " to AABB tree" << std::endl;
+    Vector3 startPosition = Vector3(-5.0f, 10.0f, 0.0f);
+    float startEntity = m_scene.GetEntityCount() - 1;
+    float currentEntityNum = 0;
+    float rows = 15;
+    float cols = 15;
+    float spacing = 0.3f;
+    constexpr unsigned int pointCount = 15 * 15;
 
-    //    /*m_scene.AddComponent(
-    //        entity, 
-    //        Gravity{ Vector3(0.0f, randGravity(generator), 0.0f) });
+    std::array<Entity, pointCount> clothEntities = {};
 
-    //    m_scene.AddComponent(
-    //        entity,
-    //        RigidBody{ { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } });
+    for (float y = 0; y < rows; y++)
+    {
+        for (float x = 0; x < cols; x++)
+        {
+            Vector3 pointPosition = startPosition + Vector3::Right * x * spacing + Vector3::Forward * y * spacing;
+            //float mass = y == 0 ? 0.0f : 1 / 0.05f;
+            float mass = 1.0f / 0.05f;
 
-    //    Vector3 objectPosition = Vector3(randPosition(generator), randPosition(generator), randPosition(generator));
-    //    Vector3 objectRotation = Vector3(randRotation(generator), randRotation(generator), randRotation(generator));
-    //    Vector3 objectScale = Vector3(randScale(generator), randScale(generator), randScale(generator));
+            currentEntityNum = m_scene.CreateEntity();
+            m_scene.AddComponent(
+                currentEntityNum,
+                Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, mass, 0.2f }
+            );
+            m_scene.AddComponent(
+                currentEntityNum,
+                Transform{ pointPosition, Quaternion(), Vector3(0.05f, 0.05f, 0.05f) }
+            );
+            m_scene.AddComponent(
+                currentEntityNum,
+                RigidBody{ Vector3::Zero, Vector3::Zero, Vector3::Zero, Matrix3(Vector3::Zero) }
+            );
+            m_scene.AddComponent(
+                currentEntityNum,
+                Collider{ Point(pointPosition) }
+            );
+            m_scene.AddComponent(
+                currentEntityNum,
+                Mesh{ MeshLoader::GetMeshID("Sphere") }
+            );
 
-    //    m_scene.AddComponent(
-    //        entity,
-    //        Transform{ objectPosition, objectRotation, objectScale });*/
-    //}
+            m_aabbTree.InsertLeaf(currentEntityNum, AABB::FromPositionScale(pointPosition, Vector3(0.1f, 0.1f, 0.1f)));
+            clothEntities[x + y * cols] = currentEntityNum;
 
-    //m_aabbTree.PrintTree(m_aabbTree.GetRootIndex());
+            if (x > 0 && y > 0)
+            {
+                Entity a = clothEntities[x + y * cols];
+                Entity b = clothEntities[(x - 1) + y * cols];
+                Entity c = clothEntities[x + (y - 1) * cols];
+                
+                Entity spring1 = m_scene.CreateEntity();
+                m_scene.AddComponent(
+                    spring1,
+                    Spring{ a, b, spacing, 0.8f }
+                );
+
+                Entity spring2 = m_scene.CreateEntity();
+                m_scene.AddComponent(
+                    spring2,
+                    Spring{ a, c, spacing, 0.8f }
+                );
+            }
+            if (x == 0 && y > 0)
+            {
+                Entity a = clothEntities[x + y * cols];
+                Entity b = clothEntities[x + (y - 1) * cols];
+
+                Entity spring1 = m_scene.CreateEntity();
+                m_scene.AddComponent(
+                    spring1,
+                    Spring{ a, b, spacing, 0.8f }
+                );
+            }
+            if (x > 0 && y == 0)
+            {
+                Entity a = clothEntities[x + y * cols];
+                Entity b = clothEntities[(x - 1) + y * cols];
+
+                Entity spring1 = m_scene.CreateEntity();
+                m_scene.AddComponent(
+                    spring1,
+                    Spring{ a, b, spacing, 0.8f }
+                );
+            }
+        }
+    }
+
+    ////////////////////////////////////////
+
     m_instanceData.resize(MAX_ENTITIES);
 
     // create instance buffer
@@ -490,13 +589,16 @@ void DX11App::Update()
                     m_aabbTree.UpdatePosition(entity, specificCollider.getPosition());
                     m_aabbTree.UpdateScale(entity, specificCollider.getSize());
                 }
+                else if constexpr (std::is_same_v<T, Point>)
+                {
+                    m_aabbTree.UpdatePosition(entity, specificCollider.position);
+                }
                 }, collider->Collider);
 
             m_aabbTree.TriggerUpdate(entity);
         });
 
-        // also need to have individual elapsed time for system
-
+        // collisions detection + resolution
         std::vector<std::pair<Entity, Entity>> potential = m_aabbTree.GetPotentialIntersections();
 
         /*std::cout << "Collision Count: " << potential.size() << std::endl;*/
@@ -610,6 +712,29 @@ void DX11App::Update()
             //    e2RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeB, fullImpulseFriction));
             //}
         }
+
+        // update springs
+        m_scene.ForEach<Spring>([&](Entity entity, Spring* spring) {
+
+            Transform* e1Transform = m_scene.GetComponent<Transform>(spring->Entity1);
+            Particle* e1Particle = m_scene.GetComponent<Particle>(spring->Entity1);
+            Transform* e2Transform = m_scene.GetComponent<Transform>(spring->Entity2);
+            Particle* e2Particle = m_scene.GetComponent<Particle>(spring->Entity2);
+
+            float totalMass = e1Particle->InverseMass + e2Particle->InverseMass;
+            if (totalMass == 0.0f) return;  // Both particles are immovable, no need to apply force.
+
+            Vector3 delta = e2Transform->Position - e1Transform->Position;
+            float currentLength = delta.magnitude();
+
+            if (currentLength < 1e-6f) return;  // Avoid division by zero when normalizing
+
+            Vector3 direction = delta.normalized();
+            Vector3 force = direction * (spring->Stiffness * (currentLength - spring->RestLength));
+
+            e1Particle->Force += force;
+            e2Particle->Force -= force;
+            });
     }
 
     for (Entity entity = 0; entity < MAX_ENTITIES; entity++)
@@ -647,7 +772,7 @@ void DX11App::Update()
             Entity newEntity = m_scene.CreateEntity();
             m_scene.AddComponent(
                 newEntity,
-                Particle{ Vector3::Zero, Vector3::Zero, 1 / 2.0f, 0.8f}
+                Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 1 / 2.0f, 0.8f}
             );
             m_scene.AddComponent(
                 newEntity,
@@ -689,15 +814,20 @@ void DX11App::Update()
         if (m_scene.HasComponent<Transform>(m_selectedEntity))
         {
             Transform* transformComponent = m_scene.GetComponent<Transform>(m_selectedEntity);
-            Vector3 eulerRotation = transformComponent->Rotation.toEulerAngles();
-            eulerRotation = Vector3(XMConvertToDegrees(eulerRotation.x), XMConvertToDegrees(eulerRotation.y), XMConvertToDegrees(eulerRotation.z));
 
             ImGui::Text("Transform Component:");
             ImGui::InputFloat3("Position", &transformComponent->Position.x);
-            ImGui::InputFloat3("Rotation", &eulerRotation.x);
             ImGui::InputFloat3("Scale", &transformComponent->Scale.x);
 
-            transformComponent->Rotation = Quaternion::FromEulerAngles(Vector3(XMConvertToRadians(eulerRotation.x), XMConvertToRadians(eulerRotation.y), XMConvertToRadians(eulerRotation.z)));
+            Quaternion& rotation = transformComponent->Rotation;
+            ImGui::SliderFloat4("Rotation (Quaternion)", &rotation.r, -1.0f, 1.0f);
+            rotation.normalize();
+
+            Vector3 eulerRotation = rotation.toEulerAngles();
+            eulerRotation = Vector3(XMConvertToDegrees(eulerRotation.x),
+                XMConvertToDegrees(eulerRotation.y),
+                XMConvertToDegrees(eulerRotation.z));
+            ImGui::Text("Euler (Read-Only): %.1f, %.1f, %.1f", eulerRotation.x, eulerRotation.y, eulerRotation.z);
         }
 
         if (m_scene.HasComponent<Particle>(m_selectedEntity))
@@ -818,6 +948,47 @@ void DX11App::Draw()
             m_immediateContext->DrawIndexed(cubeMeshData.IndexCount, 0, 0);
         }
     }
+
+    // draw springs
+    transformData.World = XMMatrixTranspose(XMMatrixIdentity());
+    sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
+
+    m_scene.ForEach<Spring>([&](Entity entity, Spring* spring) {
+
+        Vector3 start = m_scene.GetComponent<Transform>(spring->Entity1)->Position;
+        Vector3 end = m_scene.GetComponent<Transform>(spring->Entity2)->Position;
+
+        SimpleVertex lineVertices[] = {
+            { XMFLOAT3(start.x, start.y, start.z), XMFLOAT3(), XMFLOAT2(), XMFLOAT4() },
+            { XMFLOAT3(end.x, end.y, end.z), XMFLOAT3(), XMFLOAT2(), XMFLOAT4() },
+        };
+
+        D3D11_BUFFER_DESC vertexBufferDesc = {};
+        vertexBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+        vertexBufferDesc.ByteWidth = sizeof(lineVertices);
+        vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+        vertexBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+        D3D11_SUBRESOURCE_DATA vertexData = {};
+        vertexData.pSysMem = lineVertices;
+
+        ID3D11Buffer* vertexBuffer;
+        HRESULT hr = m_device->CreateBuffer(&vertexBufferDesc, &vertexData, &vertexBuffer);
+        if (FAILED(hr)) return;
+
+        // Set vertex buffer
+        UINT stride = sizeof(SimpleVertex);
+        UINT offset = 0;
+        m_immediateContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
+        m_immediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+
+        // Draw the line
+        m_immediateContext->Draw(2, 0);
+
+        // Cleanup
+        vertexBuffer->Release();
+
+    });
 
     //////// SKYBOX RENDERING ////////
     ID3D11DepthStencilState* pOldDepthState = nullptr;

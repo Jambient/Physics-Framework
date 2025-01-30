@@ -58,21 +58,24 @@ public:
 	// assumes normalized quaternion
 	Vector3 toEulerAngles() const
 	{
+		Quaternion normQ = normalized();
 		Vector3 angles;
 
 		// roll (x-axis rotation)
-		float sinr_cosp = 2 * (r * i + j * k);
-		float cosr_cosp = 1 - 2 * (i * i + j * j);
+		float sinr_cosp = 2 * (normQ.r * normQ.i + normQ.j * normQ.k);
+		float cosr_cosp = 1 - 2 * (normQ.i * normQ.i + normQ.j * normQ.j);
 		angles.x = atan2f(sinr_cosp, cosr_cosp);
 
 		// pitch (y-axis rotation)
-		float sinp = sqrtf(1 + 2 * (r * j - i * k));
-		float cosp = sqrtf(1 - 2 * (r * j - i * k));
-		angles.y = 2 * atan2f(sinp, cosp) - M_PI / 2;
+		float sinp = 2 * (normQ.r * normQ.j - normQ.k * normQ.i);
+		if (fabs(sinp) >= 1)
+			angles.y = copysign(M_PI / 2, sinp); // Use 90 degrees if out of range
+		else
+			angles.y = asinf(sinp);
 
 		// yaw (z-axis rotation)
-		float siny_cosp = 2 * (r * k + i * j);
-		float cosy_cosp = 1 - 2 * (j * j + k * k);
+		float siny_cosp = 2 * (normQ.r * normQ.k + normQ.i * normQ.j);
+		float cosy_cosp = 1 - 2 * (normQ.j * normQ.j + normQ.k * normQ.k);
 		angles.z = atan2f(siny_cosp, cosy_cosp);
 
 		return angles;
