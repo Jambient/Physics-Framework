@@ -512,6 +512,7 @@ HRESULT DX11App::Init()
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.IniFilename = "ImGui/imgui.ini";
 
     // Setup Platform/Renderer backends
     ImGui_ImplWin32_Init(m_windowHandle);

@@ -1,13 +1,17 @@
+// This inspired by the 2019 GDC talk by Erin Catto https://box2d.org/files/ErinCatto_DynamicBVH_GDC2019.pdf
+
 #pragma once
-#include "Definitions.h"
-#include "Vector3.h"
-#include "Colliders.h"
-#include "Ray.h"
+#ifndef AABBTREE_H_
+#define AABBTREE_H_
+
 #include <vector>
 #include <queue>
 #include <unordered_set>
 
-// inspired by the 2019 GDC talk by Erin Catto https://box2d.org/files/ErinCatto_DynamicBVH_GDC2019.pdf
+#include "Definitions.h"
+#include "Vector3.h"
+#include "Colliders.h"
+#include "Ray.h"
 
 constexpr int NULL_INDEX = -1;
 constexpr float ENLARGEMENT_FACTOR = 0.3f;
@@ -76,3 +80,4 @@ private:
 	std::queue<int> m_availableNodes;
 };
 
+#endif // AABBTREE_H_
