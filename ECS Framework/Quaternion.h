@@ -5,6 +5,7 @@
 #include <array>
 #include "Vector3.h"
 #include "Matrix3.h"
+#include "Matrix4.h"
 
 // this quaternion class was made with great help from https://www.3dgep.com/understanding-quaternions/ 
 // which goes through a large amount of the required equations.
@@ -83,32 +84,38 @@ public:
 
 	float* toRotationMatrix() const
 	{
-		std::array<float, 16> rotMat;
+		//std::array<float, 16> rotMat;
 
-		rotMat[0] = 2 * (r * r + i * i) - 1;
-		rotMat[1] = 2 * (i * j - r * k);
-		rotMat[2] = 2 * (i * k + r * j);
-		rotMat[3] = 0;
+		//rotMat[0] = 2 * (r * r + i * i) - 1;
+		//rotMat[1] = 2 * (i * j - r * k);
+		//rotMat[2] = 2 * (i * k + r * j);
+		//rotMat[3] = 0;
 
-		// Second row of the rotation matrix
-		rotMat[4] = 2 * (i * j + r * k);
-		rotMat[5] = 2 * (r * r + j * j) - 1;
-		rotMat[6] = 2 * (j * k - r * i);
-		rotMat[7] = 0;
+		//// Second row of the rotation matrix
+		//rotMat[4] = 2 * (i * j + r * k);
+		//rotMat[5] = 2 * (r * r + j * j) - 1;
+		//rotMat[6] = 2 * (j * k - r * i);
+		//rotMat[7] = 0;
 
-		// Third row of the rotation matrix
-		rotMat[8] = 2 * (i * k - r * j);
-		rotMat[9] = 2 * (j * k + r * i);
-		rotMat[10] = 2 * (r * r + k * k) - 1;
-		rotMat[11] = 0;
+		//// Third row of the rotation matrix
+		//rotMat[8] = 2 * (i * k - r * j);
+		//rotMat[9] = 2 * (j * k + r * i);
+		//rotMat[10] = 2 * (r * r + k * k) - 1;
+		//rotMat[11] = 0;
 
 		// Fourth row (homogeneous coordinates)
-		rotMat[12] = 0;
+		/*rotMat[12] = 0;
 		rotMat[13] = 0;
 		rotMat[14] = 0;
-		rotMat[15] = 1;
+		rotMat[15] = 1;*/
 
-		return rotMat.data();
+		Vector3 right = (*this) * Vector3::Right;
+		Vector3 up = (*this) * Vector3::Up;
+		Vector3 forward = (*this) * Vector3::Forward;
+
+		Matrix4 mat = Matrix4::FromRotationPosition(Matrix3::FromRotationVectors(right, up, forward), Vector3::Zero);
+
+		return mat.values.data();
 	}
 
 	// TODO: I NEED TO MERGE THIS METHOD WITH THE ABOVE ONE
@@ -166,22 +173,28 @@ public:
 
 	Quaternion operator*(const Quaternion& other) const
 	{
-		return Quaternion(
+		/*return Quaternion(
             r * other.r - i * other.i - j * other.j - k * other.k,
             r * other.i + other.r * i + j * other.k - other.j * k,
             r * other.j + other.r * j + k * other.i - other.k * i,
             r * other.k + other.r * k + i * other.j - other.i * j
-        );
+        );*/
+
+		return Quaternion(r * other.r - i * other.i
+			- j * other.j - k * other.k,
+			r * other.i + i * other.r
+			+ j * other.k - k * other.j,
+			r * other.j + j * other.r
+			+ k * other.i - i * other.k,
+			r * other.k + k * other.r
+			+ i * other.j - j * other.i);
 	}
 
 	Vector3 operator*(const Vector3& v) const
 	{
-		/*Quaternion vectorQuat(0, v.x, v.y, v.z);
+		Quaternion vectorQuat(0, v);
 		Quaternion result = (*this) * vectorQuat * this->conjugate();
-		return Vector3(result.i, result.j, result.k);*/
-
-		Vector3 u = Vector3(i, j, k);
-		return u * 2.0f * Vector3::Dot(u, v) + v * (r * r - Vector3::Dot(u, u)) + Vector3::Cross(u, v) * 2.0f * r;
+		return Vector3(result.i, result.j, result.k);
 	}
 
 	void operator*=(float scalar)
@@ -288,19 +301,32 @@ public:
 	// angles are in radians -> roll, pitch, yaw
 	static Quaternion FromEulerAngles(const Vector3& angles)
 	{
-		float cr = cosf(angles.x * 0.5);
-		float sr = sinf(angles.x * 0.5);
-		float cp = cosf(angles.y * 0.5);
-		float sp = sinf(angles.y * 0.5);
-		float cy = cosf(angles.z * 0.5);
-		float sy = sinf(angles.z * 0.5);
+		Quaternion q;
+		double roll = angles.x;
+		double pitch = angles.y;
+		double yaw = angles.z;
 
-		return Quaternion(
-			cr * cp * cy + sr * sp * sy,
-			sr * cp * cy - cr * sp * sy,
-			cr * sp * cy + sr * cp * sy,
-			cr * cp * sy - sr * sp * cy
-		);
+		double cyaw, cpitch, croll, syaw, spitch, sroll;
+		double cyawcpitch, syawspitch, cyawspitch, syawcpitch;
+
+		cyaw = cos(0.5f * yaw);
+		cpitch = cos(0.5f * pitch);
+		croll = cos(0.5f * roll);
+		syaw = sin(0.5f * yaw);
+		spitch = sin(0.5f * pitch);
+		sroll = sin(0.5f * roll);
+
+		cyawcpitch = cyaw * cpitch;
+		syawspitch = syaw * spitch;
+		cyawspitch = cyaw * spitch;
+		syawcpitch = syaw * cpitch;
+
+		q.r = (float)(cyawcpitch * croll + syawspitch * sroll);
+		q.i = (float)(cyawcpitch * sroll - syawspitch * croll);
+		q.j = (float)(cyawspitch * croll + syawcpitch * sroll);
+		q.k = (float)(syawcpitch * croll - cyawspitch * sroll);
+
+		return q;
 	}
 
 	// code from https://gamedev.stackexchange.com/questions/15070/orienting-a-model-to-face-a-target

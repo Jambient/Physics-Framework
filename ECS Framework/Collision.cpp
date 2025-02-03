@@ -381,7 +381,7 @@ CollisionManifold HandleOBBSphereCollision(const ColliderBase& a, const Collider
     manifold.isColliding = false;
 
     // Transform sphere center to OBB local space
-    Vector3 localSphereCenter = boxA.GetRotationMatrix().transpose() * (sphereB.center - boxA.center);
+    Vector3 localSphereCenter = boxA.GetRotationMatrix() * (sphereB.center - boxA.center);
 
     Vector3 boxSize = boxA.halfExtents;
 
@@ -389,7 +389,7 @@ CollisionManifold HandleOBBSphereCollision(const ColliderBase& a, const Collider
     Vector3 closestPointLocal = Vector3::Clamp(localSphereCenter, -boxSize, boxSize);
 
     // Back to world space
-    Vector3 closestPointOnBox = boxA.GetRotationMatrix() * closestPointLocal + boxA.center;
+    Vector3 closestPointOnBox = boxA.GetRotationMatrix().transpose() * closestPointLocal + boxA.center;
 
     // Compute local displacement
     Vector3 displacement = sphereB.center - closestPointOnBox;

@@ -306,7 +306,8 @@ HRESULT DX11App::Init()
     );
     m_scene.AddComponent(
         entities[2],
-        Collider{ AABB::FromPositionScale(Vector3(0.0f, 3.1f, 5.6f), Vector3(10.0f, 5.0f, 1.0f)) }
+        //Collider{ AABB::FromPositionScale(Vector3(0.0f, 3.1f, 5.6f), Vector3(10.0f, 5.0f, 1.0f)) }
+        Collider{ OBB(Vector3(0.0f, 3.1f, 5.6f), Vector3(10.0f, 5.0f, 1.0f), Quaternion()) }
     );
     m_scene.AddComponent(
         entities[2],
@@ -399,13 +400,14 @@ HRESULT DX11App::Init()
     ).reciprocal();
 
     Vector3 testObjectPosition = Vector3::Up * 5.0f + Vector3::Right * 1.5f;
+    Quaternion testObjectRotation = Quaternion::FromEulerAngles(Vector3(0.0f, 0.0, XMConvertToRadians(30.0f)));
     m_scene.AddComponent(
         entities[1],
-        Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 1.0f / 2.0f, 0.8f }
+        Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 1.0f / 2.0f, 0.0f }
     );
     m_scene.AddComponent(
         entities[1],
-        Transform{ testObjectPosition, Quaternion::FromEulerAngles(Vector3(0.0f, 0.0f, XMConvertToRadians(-30.0f))), Vector3(3.0f, 1.0f, 3.0f)}
+        Transform{ testObjectPosition, testObjectRotation, Vector3(3.0f, 1.0f, 3.0f)}
         //Transform{ testObjectPosition, Quaternion(), Vector3(3.0f, 1.0f, 3.0f) }
     );
     m_scene.AddComponent(
@@ -414,7 +416,7 @@ HRESULT DX11App::Init()
     );
     m_scene.AddComponent(
         entities[1],
-        Collider{ OBB(testObjectPosition, Vector3::One, Quaternion()) }
+        Collider{ OBB(testObjectPosition, Vector3::One, testObjectRotation) }
     );
     m_scene.AddComponent(
         entities[1],
@@ -690,7 +692,7 @@ void DX11App::Update()
             e1Transform->Position -= info.collisionNormal * info.penetrationDepth * (e1Particle->InverseMass / totalMass);
             e2Transform->Position += info.collisionNormal * info.penetrationDepth * (e2Particle->InverseMass / totalMass);
 
-            float j;
+            float j = 0.0f;
 
             m_debugPoints.insert(m_debugPoints.end(), info.contactPoints.begin(), info.contactPoints.end());
             //std::cout << "COLLISION POINTS: " << info.contactPoints.size() << std::endl;
@@ -731,54 +733,54 @@ void DX11App::Update()
             }
 
             // friction impulses
-            //for (const Vector3& contactPoint : info.contactPoints)
-            //{
-            //    Vector3 relativeA = contactPoint - e1Transform->Position;
-            //    Vector3 relativeB = contactPoint - e2Transform->Position;
+            for (const Vector3& contactPoint : info.contactPoints)
+            {
+                Vector3 relativeA = contactPoint - e1Transform->Position;
+                Vector3 relativeB = contactPoint - e2Transform->Position;
 
-            //    Vector3 angVelocityA = Vector3::Cross(e1RigidBody->AngularVelocity, relativeA);
-            //    Vector3 angVelocityB = Vector3::Cross(e2RigidBody->AngularVelocity, relativeB);
+                Vector3 angVelocityA = Vector3::Cross(e1RigidBody->AngularVelocity, relativeA);
+                Vector3 angVelocityB = Vector3::Cross(e2RigidBody->AngularVelocity, relativeB);
 
-            //    Vector3 fullVelocityA = e1Particle->LinearVelocity + angVelocityA;
-            //    Vector3 fullVelocityB = e2Particle->LinearVelocity + angVelocityB;
-            //    Vector3 contactVelocity = fullVelocityB - fullVelocityA;
+                Vector3 fullVelocityA = e1Particle->LinearVelocity + angVelocityA;
+                Vector3 fullVelocityB = e2Particle->LinearVelocity + angVelocityB;
+                Vector3 contactVelocity = fullVelocityB - fullVelocityA;
 
-            //    Vector3 tangent = contactVelocity - info.collisionNormal * Vector3::Dot(contactVelocity, info.collisionNormal);
-            //    if (tangent.magnitude() < 1e-6) { continue; }
+                Vector3 tangent = contactVelocity - info.collisionNormal * Vector3::Dot(contactVelocity, info.collisionNormal);
+                if (tangent.magnitude() < 1e-6) { continue; }
 
-            //    tangent.normalize();
+                tangent.normalize();
 
-            //    float impulseForce = Vector3::Dot(contactVelocity, tangent);
-            //    //if (impulseForce > 0.0f) continue; // Skip if objects are separating
+                float impulseForce = Vector3::Dot(contactVelocity, tangent);
+                //if (impulseForce > 0.0f) continue; // Skip if objects are separating
 
-            //    Vector3 inertiaA = Vector3::Cross(e1RigidBody->InverseInertiaTensor * Vector3::Cross(relativeA, tangent), relativeA);
-            //    Vector3 inertiaB = Vector3::Cross(e2RigidBody->InverseInertiaTensor * Vector3::Cross(relativeB, tangent), relativeB);
-            //    float angularEffect = Vector3::Dot(inertiaA + inertiaB, tangent);
+                Vector3 inertiaA = Vector3::Cross(e1RigidBody->InverseInertiaTensor * Vector3::Cross(relativeA, tangent), relativeA);
+                Vector3 inertiaB = Vector3::Cross(e2RigidBody->InverseInertiaTensor * Vector3::Cross(relativeB, tangent), relativeB);
+                float angularEffect = Vector3::Dot(inertiaA + inertiaB, tangent);
 
-            //    float jt = -impulseForce / (totalMass + angularEffect);
+                float jt = -impulseForce / (totalMass + angularEffect);
 
-            //    // temporary friction values
-            //    // to calculate properly - add frictions from both bodies and average them
-            //    float sf = 0.6f; // static friction
-            //    float df = 0.3f; // dynamic friction
+                // temporary friction values
+                // to calculate properly - add frictions from both bodies and average them
+                float sf = 0.6f; // static friction
+                float df = 0.3f; // dynamic friction
 
-            //    Vector3 fullImpulseFriction;
+                Vector3 fullImpulseFriction;
 
-            //    if (fabsf(jt) <= j * sf)
-            //    {
-            //        fullImpulseFriction = tangent * jt;
-            //    }
-            //    else
-            //    {
-            //        fullImpulseFriction = tangent * -j * df;
-            //    }
+                if (fabsf(jt) <= j * sf)
+                {
+                    fullImpulseFriction = tangent * jt;
+                }
+                else
+                {
+                    fullImpulseFriction = tangent * -j * df;
+                }
 
-            //    e1Particle->ApplyLinearImpulse(-fullImpulseFriction);
-            //    e2Particle->ApplyLinearImpulse(fullImpulseFriction);
+                e1Particle->ApplyLinearImpulse(-fullImpulseFriction);
+                e2Particle->ApplyLinearImpulse(fullImpulseFriction);
 
-            //    e1RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeA, -fullImpulseFriction));
-            //    e2RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeB, fullImpulseFriction));
-            //}
+                e1RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeA, -fullImpulseFriction));
+                e2RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeB, fullImpulseFriction));
+            }
         }
 
         // update springs
