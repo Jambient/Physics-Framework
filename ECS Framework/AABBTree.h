@@ -1,4 +1,7 @@
-// This inspired by the 2019 GDC talk by Erin Catto https://box2d.org/files/ErinCatto_DynamicBVH_GDC2019.pdf
+// Dyanmic tree implementation for physics broadphase.
+// 
+// Inspired by the 2019 GDC talk by Erin Catto: 
+// https://box2d.org/files/ErinCatto_DynamicBVH_GDC2019.pdf
 
 #pragma once
 #ifndef AABBTREE_H_
@@ -13,31 +16,69 @@
 #include "Colliders.h"
 #include "Ray.h"
 
-constexpr int NULL_INDEX = -1;
-constexpr float ENLARGEMENT_FACTOR = 0.3f;
+constexpr int NULL_NODE_INDEX = -1; // Constant representing a null index for a node.
+constexpr float BOX_ENLARGEMENT_FACTOR = 0.3f; // Constant factor by which enlarged box is scaled up from node box
 
+/**
+ * @struct Node
+ * @brief Represents a node in the AABB tree.
+ */
 struct Node
 {
-	AABB enlargedBox;
-	AABB box;
-	Entity entity;
-	int parentIndex = NULL_INDEX;
-	int child1 = NULL_INDEX;
-	int child2 = NULL_INDEX;
-	bool isLeaf = false;
+	AABB enlargedBox; // Larger bounding box to delay node rebuilds. Leaf nodes only.
+	AABB box; // Actual bounding box for the node. Leaf ndoes only.
+	Entity entity; // ECS entity associated with this node. Leaf nodes only.
+	int parentIndex = NULL_NODE_INDEX; // Node index for parent node.
+	int child1 = NULL_NODE_INDEX; // Node index for left child node. Internal nodes only.
+	int child2 = NULL_NODE_INDEX; // Node index for right child node. Internal nodes only.
+	bool isLeaf = false; // Flag indicating whether this node is a leaf.
 };
 
+/**
+ * @class AABBTree
+ * @brief A dynamic bounding volume hierachy that uses axis aligned bounding boxes.
+ */
 class AABBTree
 {
 public:
+	/**
+	 * @brief Default constructor.
+	 */
 	AABBTree();
 
+	/**
+	 * @brief Retrieves a node by its node index.
+	 * @param nodeIndex The index of the node to retrieve.
+	 * @return A reference to the node object.
+	 */
 	Node& GetNode(int nodeIndex);
+
+	/**
+	 * @brief Retrieves a leaf node by its associated ECS entity.
+	 * @param entity The ECS entity of the leaf node to retrieve.
+	 * @return A reference to the node object.
+	 */
 	Node& GetNodeFromEntity(Entity entity);
+
+	/**
+	 * @brief Get all the nodes currently in the tree.
+	 * @return A vector of all tree nodes.
+	 */
 	std::vector<Node> GetNodes() const { return m_nodes; }
 
-	void InsertLeaf(Entity entity, AABB box);
+	/**
+	 * @brief Create a new leaf node in the tree that represents an ECS entity.
+	 * @param entity The ECS entity to associate with the new node.
+	 * @param box The bounding box for the new node.
+	 */
+	void InsertEntity(Entity entity, AABB box);
+
+	/**
+	 * @brief Removes a leaf node from the tree.
+	 * @param leafIndex The node index of the leaf node.
+	 */
 	void RemoveLeaf(int leafIndex);
+
 	void RemoveEntity(Entity entity);
 
 	void UpdatePosition(Entity entity, const Vector3& newPosition);
@@ -71,7 +112,7 @@ private:
 
 	std::vector<Node> m_nodes;
 	int m_nodeCount;
-	int m_rootIndex = NULL_INDEX;
+	int m_rootIndex = NULL_NODE_INDEX;
 
 	std::vector<size_t> m_denseToNodeIndex;
 	std::vector<int> m_nodeToDenseIndex;

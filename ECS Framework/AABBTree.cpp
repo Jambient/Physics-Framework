@@ -21,8 +21,8 @@ AABBTree::AABBTree()
 		m_availableNodes.push(i);
 	}
 
-	m_entityToNodeIndex.resize(MAX_ENTITIES, NULL_INDEX);
-	m_nodeToDenseIndex.resize(maxNodes, NULL_INDEX);
+	m_entityToNodeIndex.resize(MAX_ENTITIES, NULL_NODE_INDEX);
+	m_nodeToDenseIndex.resize(maxNodes, NULL_NODE_INDEX);
 }
 
 Node& AABBTree::GetNode(int nodeIndex)
@@ -35,12 +35,12 @@ Node& AABBTree::GetNodeFromEntity(Entity entity)
 	return m_nodes[m_nodeToDenseIndex[m_entityToNodeIndex[entity]]];
 }
 
-void AABBTree::InsertLeaf(Entity entity, AABB box)
+void AABBTree::InsertEntity(Entity entity, AABB box)
 {
 	int leafIndex = AllocateLeafNode(entity, box);
 	m_entityToNodeIndex[entity] = leafIndex;
 
-	if (m_rootIndex == NULL_INDEX)
+	if (m_rootIndex == NULL_NODE_INDEX)
 	{
 		m_rootIndex = leafIndex;
 		return;
@@ -55,7 +55,7 @@ void AABBTree::InsertLeaf(Entity entity, AABB box)
 	GetNode(newParent).parentIndex = oldParent;
 	GetNode(newParent).box = AABB::Union(box, GetNode(bestSibling).box);
 
-	if (oldParent != NULL_INDEX)
+	if (oldParent != NULL_NODE_INDEX)
 	{
 		if (GetNode(oldParent).child1 == bestSibling)
 		{
@@ -83,18 +83,18 @@ void AABBTree::InsertLeaf(Entity entity, AABB box)
 
 void AABBTree::RemoveLeaf(int leafIndex)
 {
-	if (m_nodeToDenseIndex[leafIndex] == NULL_INDEX)
+	if (m_nodeToDenseIndex[leafIndex] == NULL_NODE_INDEX)
 	{
 		return;
 	}
 
 	Entity entity = GetNode(leafIndex).entity;
-	m_entityToNodeIndex[entity] = NULL_INDEX;
+	m_entityToNodeIndex[entity] = NULL_NODE_INDEX;
 
 	if (leafIndex == m_rootIndex)
 	{
 		// If the leaf is the root, just clear the root
-		m_rootIndex = NULL_INDEX;
+		m_rootIndex = NULL_NODE_INDEX;
 		DeallocateNode(leafIndex);
 		return;
 	}
@@ -103,7 +103,7 @@ void AABBTree::RemoveLeaf(int leafIndex)
 	int grandParentIndex = GetNode(parentIndex).parentIndex;
 	int siblingIndex = GetNode(parentIndex).child1 == leafIndex ? GetNode(parentIndex).child2 : GetNode(parentIndex).child1;
 
-	if (grandParentIndex != NULL_INDEX)
+	if (grandParentIndex != NULL_NODE_INDEX)
 	{
 		// Update the grandparent to point to the sibling
 		if (GetNode(grandParentIndex).child1 == parentIndex)
@@ -120,7 +120,7 @@ void AABBTree::RemoveLeaf(int leafIndex)
 	{
 		// If no grandparent, the sibling becomes the new root
 		m_rootIndex = siblingIndex;
-		GetNode(siblingIndex).parentIndex = NULL_INDEX;
+		GetNode(siblingIndex).parentIndex = NULL_NODE_INDEX;
 	}
 
 	// Deallocate the parent node and the leaf node
@@ -138,7 +138,7 @@ void AABBTree::UpdatePosition(Entity entity, const Vector3& newPosition)
 	int leafIndex = m_entityToNodeIndex[entity];
 
 	// check if the entity actually exists in the tree
-	if (leafIndex == NULL_INDEX) { return; }
+	if (leafIndex == NULL_NODE_INDEX) { return; }
 
 	GetNode(leafIndex).box.updatePosition(newPosition);
 }
@@ -148,7 +148,7 @@ void AABBTree::UpdateScale(Entity entity, const Vector3& newScale)
 	int leafIndex = m_entityToNodeIndex[entity];
 
 	// check if the entity actually exists in the tree
-	if (leafIndex == NULL_INDEX) { return; }
+	if (leafIndex == NULL_NODE_INDEX) { return; }
 
 	GetNode(leafIndex).box.updateScale(newScale);
 }
@@ -158,7 +158,7 @@ void AABBTree::TriggerUpdate(Entity entity)
 	int leafIndex = m_entityToNodeIndex[entity];
 
 	// check if the entity actually exists in the tree
-	if (leafIndex == NULL_INDEX) { return; }
+	if (leafIndex == NULL_NODE_INDEX) { return; }
 
 	// check if the leaf node actually needs updating
 	if (!NeedsUpdate(leafIndex)) 
@@ -170,7 +170,7 @@ void AABBTree::TriggerUpdate(Entity entity)
 	AABB previousBox = GetNode(leafIndex).box;
 
 	RemoveLeaf(leafIndex);
-	InsertLeaf(entity, previousBox);
+	InsertEntity(entity, previousBox);
 }
 
 Entity AABBTree::Intersect(const Ray& ray, float& closestDistance)
@@ -178,7 +178,7 @@ Entity AABBTree::Intersect(const Ray& ray, float& closestDistance)
 	Entity closestEntity = INVALID_ENTITY;
 	closestDistance = FLT_MAX;
 
-	if (m_rootIndex == NULL_INDEX)
+	if (m_rootIndex == NULL_NODE_INDEX)
 		return closestEntity;
 
 	std::priority_queue<std::pair<float, int>, std::vector<std::pair<float, int>>, std::greater<>> queue;
@@ -228,14 +228,14 @@ Entity AABBTree::Intersect(const Ray& ray, float& closestDistance)
 
 int AABBTree::CalculateNodeLevel(int nodeIndex) const
 {
-	if (nodeIndex == NULL_INDEX)
+	if (nodeIndex == NULL_NODE_INDEX)
 		return -1; // Invalid index, return -1 to indicate error.
 
 	int level = 0;
 	while (nodeIndex != m_rootIndex)
 	{
 		nodeIndex = m_nodes[nodeIndex].parentIndex;
-		if (nodeIndex == NULL_INDEX)
+		if (nodeIndex == NULL_NODE_INDEX)
 			return -1; // Safety check: node is not in the tree.
 		level++;
 	}
@@ -244,7 +244,7 @@ int AABBTree::CalculateNodeLevel(int nodeIndex) const
 
 int AABBTree::GetNodeIndex(const Node& node) const
 {
-	if (node.parentIndex == NULL_INDEX)
+	if (node.parentIndex == NULL_NODE_INDEX)
 	{
 		return m_rootIndex;
 	}
@@ -258,7 +258,7 @@ int AABBTree::GetNodeIndex(const Node& node) const
 
 void AABBTree::PrintTree(int index, int depth)
 {
-	if (index == NULL_INDEX) return;
+	if (index == NULL_NODE_INDEX) return;
 
 	for (int i = 0; i < depth; ++i) std::cout << "  ";
 	std::cout << "Node " << index << ": " << (m_nodes[index].isLeaf ? "Leaf" : "Internal")
@@ -273,13 +273,13 @@ void AABBTree::PrintTree(int index, int depth)
 
 int AABBTree::GetDeepestLevel() const
 {
-	if (m_rootIndex == NULL_INDEX) {
+	if (m_rootIndex == NULL_NODE_INDEX) {
 		return 0; // Empty tree
 	}
 
 	// Helper function for recursive depth traversal
 	std::function<int(int)> CalculateDepth = [&](int nodeIndex) -> int {
-		if (nodeIndex == NULL_INDEX) {
+		if (nodeIndex == NULL_NODE_INDEX) {
 			return 0;
 		}
 
@@ -299,7 +299,7 @@ int AABBTree::GetDeepestLevel() const
 std::vector<std::pair<Entity, Entity>> AABBTree::GetPotentialIntersections()
 {
 	std::vector<std::pair<Entity, Entity>> intersections;
-	if (m_rootIndex == NULL_INDEX) return intersections;
+	if (m_rootIndex == NULL_NODE_INDEX) return intersections;
 
 	std::unordered_set<uint64_t> found;
 
@@ -311,7 +311,7 @@ std::vector<std::pair<Entity, Entity>> AABBTree::GetPotentialIntersections()
 
 void AABBTree::PotentialIntersectionHelper(std::vector<std::pair<Entity, Entity>>& intersections, std::unordered_set<uint64_t>& found, int nodeA, int nodeB)
 {
-	if (nodeA == NULL_INDEX || nodeB == NULL_INDEX) return;
+	if (nodeA == NULL_NODE_INDEX || nodeB == NULL_NODE_INDEX) return;
 
 	const Node& a = GetNode(nodeA);
 	const Node& b = GetNode(nodeB);
@@ -351,7 +351,7 @@ int AABBTree::AllocateLeafNode(Entity entity, const AABB& box)
 {
 	Node leafNode;
 	leafNode.box = box;
-	leafNode.enlargedBox = box.enlarged(ENLARGEMENT_FACTOR);
+	leafNode.enlargedBox = box.enlarged(BOX_ENLARGEMENT_FACTOR);
 	leafNode.entity = entity;
 	leafNode.isLeaf = true;
 	m_nodes.push_back(leafNode);
@@ -400,7 +400,7 @@ void AABBTree::DeallocateNode(int index)
 	// Erase the last element
 	m_nodes.pop_back();
 	m_denseToNodeIndex.pop_back();
-	m_nodeToDenseIndex[index] = NULL_INDEX;
+	m_nodeToDenseIndex[index] = NULL_NODE_INDEX;
 	m_availableNodes.push(index);
 	m_nodeCount--;
 }
@@ -421,7 +421,7 @@ int AABBTree::PickBest(const AABB& leafBox)
 	{
 		QueueNode current = queue[front++];
 
-		if (current.index == NULL_INDEX)
+		if (current.index == NULL_NODE_INDEX)
 			continue;
 
 		if (current.cost < bestCost)
@@ -432,7 +432,7 @@ int AABBTree::PickBest(const AABB& leafBox)
 
 		Node& currentNode = GetNode(current.index);
 		int parentIndex = currentNode.parentIndex;
-		int parentCost = parentIndex != NULL_INDEX ? costCache[parentIndex] : 0;
+		int parentCost = parentIndex != NULL_NODE_INDEX ? costCache[parentIndex] : 0;
 		costCache[current.index] = AABB::Union(leafBox, currentNode.box).area() - currentNode.box.area() + parentCost;
 
 		// calculate the lower bound cost
@@ -444,13 +444,13 @@ int AABBTree::PickBest(const AABB& leafBox)
 			int child1 = currentNode.child1;
 			int child2 = currentNode.child2;
 
-			if (child1 != NULL_INDEX)
+			if (child1 != NULL_NODE_INDEX)
 			{
 				Node& child1Node = GetNode(child1);
 				float child1Cost = AABB::Union(leafBox, child1Node.box).area() + costCache[child1Node.parentIndex];
 				queue.push_back({ child1, child1Cost });
 			}
-			if (child2 != NULL_INDEX)
+			if (child2 != NULL_NODE_INDEX)
 			{
 				Node& child2Node = GetNode(child2);
 				float child2Cost = AABB::Union(leafBox, child2Node.box).area() + costCache[child2Node.parentIndex];
@@ -464,7 +464,7 @@ int AABBTree::PickBest(const AABB& leafBox)
 
 void AABBTree::RefitFromNode(int index, bool rotateTree)
 {
-	while (index != NULL_INDEX)
+	while (index != NULL_NODE_INDEX)
 	{
 		Node& currentNode = GetNode(index);
 		Node& child1 = GetNode(currentNode.child1);

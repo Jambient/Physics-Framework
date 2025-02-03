@@ -176,9 +176,12 @@ public:
 
 	Vector3 operator*(const Vector3& v) const
 	{
-		Quaternion vectorQuat(0, v.x, v.y, v.z);
+		/*Quaternion vectorQuat(0, v.x, v.y, v.z);
 		Quaternion result = (*this) * vectorQuat * this->conjugate();
-		return Vector3(result.i, result.j, result.k);
+		return Vector3(result.i, result.j, result.k);*/
+
+		Vector3 u = Vector3(i, j, k);
+		return u * 2.0f * Vector3::Dot(u, v) + v * (r * r - Vector3::Dot(u, u)) + Vector3::Cross(u, v) * 2.0f * r;
 	}
 
 	void operator*=(float scalar)

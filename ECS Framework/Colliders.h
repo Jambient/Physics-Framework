@@ -142,6 +142,47 @@ struct OBB : public ColliderBase
 		return Matrix4::FromRotationPosition(Matrix3::FromRotationVectors(axes[0], axes[1], axes[2]), center);
 	}
 
+	std::vector<Vector3> GetVertices() const {
+		std::vector<Vector3> vertices(8);
+
+		// Compute the corner offsets using the half extents and axes
+		Vector3 right = axes[0] * halfExtents.x;
+		Vector3 up = axes[1] * halfExtents.y;
+		Vector3 forward = axes[2] * halfExtents.z;
+
+		// Compute the 8 vertices
+		vertices[0] = center + right + up + forward;  // +x, +y, +z
+		vertices[1] = center + right + up - forward;  // +x, +y, -z
+		vertices[2] = center + right - up + forward;  // +x, -y, +z
+		vertices[3] = center + right - up - forward;  // +x, -y, -z
+		vertices[4] = center - right + up + forward;  // -x, +y, +z
+		vertices[5] = center - right + up - forward;  // -x, +y, -z
+		vertices[6] = center - right - up + forward;  // -x, -y, +z
+		vertices[7] = center - right - up - forward;  // -x, -y, -z
+
+		return vertices;
+	}
+
+	// Given an index 0,1,2, returns the four vertices of the face whose normal is axes[index] (positive face)
+	std::vector<Vector3> GetFaceVertices(int axisIndex, bool positiveFace = true) const 
+	{
+		std::vector<Vector3> boxVertices = GetVertices();
+
+		Vector3 normal = axes[axisIndex] * (positiveFace ? 1.0f : -1.0f);
+		Vector3 faceCenter = center + normal * halfExtents[axisIndex];
+
+		int i = (axisIndex + 1) % 3;
+		int j = (axisIndex + 2) % 3;
+
+		Vector3 edge1 = axes[i] * halfExtents[i];
+		Vector3 edge2 = axes[j] * halfExtents[j];
+
+		return { faceCenter - edge1 - edge2,
+				 faceCenter + edge1 - edge2,
+				 faceCenter + edge1 + edge2,
+				 faceCenter - edge1 + edge2 };
+	}
+
 	/*void GetMinMaxVertexOnAxis(const Vector3& axis, float& minOut, float& maxOut) const
 	{
 		float centerProjection = Vector3::Dot(center, axis);

@@ -86,6 +86,8 @@ private:
 	ID3D11ShaderResourceView* m_crateMaterialSRV;
 	ID3D11ShaderResourceView* m_skyboxSRV;
 
+	std::vector<Vector3> m_debugPoints;
+
 	/**
 	 * @brief Builds a ray pointing towards the provided position on the screen from the camera's position
 	 * @param x The X offset of the position on the screen.
