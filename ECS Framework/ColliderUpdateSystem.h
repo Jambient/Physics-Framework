@@ -1,6 +1,6 @@
 #pragma once
 #include "Components.h"
-#include "Scene.h"
+#include "ECSScene.h"
 
 class ColliderUpdateSystem : public System
 {

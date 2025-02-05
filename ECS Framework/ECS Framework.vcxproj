@@ -161,7 +161,7 @@
     <ClInclude Include="Plane.h" />
     <ClInclude Include="Quaternion.h" />
     <ClInclude Include="Ray.h" />
-    <ClInclude Include="Scene.h" />
+    <ClInclude Include="ECSScene.h" />
     <ClInclude Include="ShaderManager.h" />
     <ClInclude Include="SparseSet.h" />
     <ClInclude Include="Structures.h" />

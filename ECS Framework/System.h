@@ -2,11 +2,11 @@
 #include "Definitions.h"
 #include <set>
 
-class Scene;
+class ECSScene;
 
 class System
 {
 public:
 	std::set<Entity> m_entities;
-	Scene* m_scene = nullptr;
+	ECSScene* m_scene = nullptr;
 };

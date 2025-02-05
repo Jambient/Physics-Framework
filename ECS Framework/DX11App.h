@@ -4,7 +4,7 @@
 #include "DX11Framework.h"
 #include "Structures.h"
 #include "Camera.h"
-#include "Scene.h"
+#include "ECSScene.h"
 #include "PhysicsSystem.h"
 #include "ColliderUpdateSystem.h"
 #include "Timer.h"
@@ -18,6 +18,12 @@ struct InstanceData
 	Vector3 Position;
 	Vector3 Scale;
 	Vector3 Color;
+};
+
+enum class ClickAction
+{
+	SELECT,
+	PUSH,
 };
 
 /**
@@ -63,7 +69,7 @@ private:
 	Camera* m_camera;
 
 	AABBTree m_aabbTree;
-	Scene m_scene;
+	ECSScene m_scene;
 	std::shared_ptr<PhysicsSystem> m_physicsSystem;
 	std::shared_ptr<ColliderUpdateSystem> m_colliderUpdateSystem;
 	double m_physicsAccumulator = 0.0;
@@ -87,6 +93,8 @@ private:
 	ID3D11ShaderResourceView* m_skyboxSRV;
 
 	std::vector<Vector3> m_debugPoints;
+
+	ClickAction m_currentClickAction;
 
 	/**
 	 * @brief Builds a ray pointing towards the provided position on the screen from the camera's position

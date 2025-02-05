@@ -1,8 +1,6 @@
 #pragma once
-#include "SparseSet.h"
-#include "Definitions.h"
-#include "Archetype.h"
-#include "TypeIDGenerator.h"
+#ifndef COMPONENT_MANAGER_H_
+#define COMPONENT_MANAGER_H_
 #include <cassert>
 #include <vector>
 #include <memory>
@@ -10,36 +8,58 @@
 #include <unordered_map>
 #include <array>
 
+#include "SparseSet.h"
+#include "Definitions.h"
+#include "Archetype.h"
+#include "TypeIDGenerator.h"
+
+/**
+ * @class ComponentManager
+ * @brief Manager class that manages all the components in the engine.
+ */
 class ComponentManager
 {
 public:
+	/**
+	 * @brief Default constructor
+	 */
 	ComponentManager()
 	{
 		m_componentSets.resize(MAX_COMPONENT_TYPES);
 		m_componentSizes = { 0 };
 	}
 
+	/**
+	 * @brief Registers a new component into the engine.
+	 * @tparam T The type of the component.
+	 */
 	template <typename T>
 	void RegisterComponent()
 	{
 		std::size_t typeIndex = GetTypeIndex<T>();
 
-		//assert(m_componentTypes.find(typeHash) == m_componentTypes.end() && "Registering component type more than once.");
-
 		m_componentSets[typeIndex] = std::make_shared<SparseSet<T>>();
 		m_componentSizes[typeIndex] = sizeof(T);
 	}
 
+	/**
+	 * @brief Gets the registered type index of the component type.
+	 * @return The ComponentType index of the provided component.
+	 */
 	template <typename T>
 	ComponentType GetComponentType()
 	{
 		return (ComponentType)GetTypeIndex<T>();
-
-		//assert(m_componentTypes.find(typeHash) != m_componentTypes.end() && "Component not registered before use.");
-
-		//return m_componentTypes[typeHash];
 	}
 
+	/**
+	 * @brief Adds a component to an entity. It does this by copying the entities component data from its
+	 * previous archetype (if applicable), adding on the new component data and inserting it into the new archetype.
+	 * @param entity The identifier of the entity to add the component to.
+	 * @param signature The current signature of the entity.
+	 * @param component The data of the component being added.
+	 * @return The new signature of the entity.
+	 */
 	template <typename T>
 	Signature AddComponent(Entity entity, Signature signature, T component)
 	{
@@ -145,3 +165,5 @@ private:
 		return TypeIndexGenerator::GetTypeIndex<T>();
 	}
 };
+
+#endif //COMPONENT_MANAGER_H_

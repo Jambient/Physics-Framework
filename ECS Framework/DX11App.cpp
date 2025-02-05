@@ -936,6 +936,19 @@ void DX11App::Update()
     ImGui::Text("Entity Count: %d of %d", m_scene.GetEntityCount(), MAX_ENTITIES);
     ImGui::End();
 
+    ImGui::Begin("Click Options");
+    ImGui::Text("Choose click action:");
+    if (ImGui::Button("Select Mode"))
+    {
+        m_currentClickAction = ClickAction::SELECT;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Push Mode"))
+    {
+        m_currentClickAction = ClickAction::PUSH;
+    }
+    ImGui::End();
+
     m_timer.Tick();
 }
 
@@ -1143,7 +1156,26 @@ void DX11App::OnMouseClick(WPARAM pressedBtn, int x, int y)
         float intersectDistance;
         Entity entity = m_aabbTree.Intersect(ray, intersectDistance);
         
-        m_selectedEntity = entity;
+        if (m_currentClickAction == ClickAction::SELECT)
+        {
+            m_selectedEntity = entity;
+        }
+        else if (m_currentClickAction == ClickAction::PUSH)
+        {
+            Vector3 force = ray.GetDirection() * 2.5f;
+            if (m_scene.HasComponent<Particle>(entity))
+            {
+                m_scene.GetComponent<Particle>(entity)->ApplyLinearImpulse(force);
+            }
+            if (m_scene.HasComponent<RigidBody>(entity))
+            {
+                Vector3 intersectionPosition = ray.GetOrigin() + ray.GetDirection() * intersectDistance;
+                Vector3 localPosition = intersectionPosition - m_scene.GetComponent<Transform>(entity)->Position;
+                Vector3 torque = Vector3::Cross(localPosition, force);
+
+                m_scene.GetComponent<RigidBody>(entity)->ApplyAngularImpuse(torque);
+            }
+        }
     }
 }
 

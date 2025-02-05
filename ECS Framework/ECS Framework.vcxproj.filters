@@ -57,7 +57,7 @@
     <ClInclude Include="SystemManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Scene.h">
+    <ClInclude Include="ECSScene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Components.h">
