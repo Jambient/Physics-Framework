@@ -1160,7 +1160,7 @@ void DX11App::OnMouseClick(WPARAM pressedBtn, int x, int y)
         {
             m_selectedEntity = entity;
         }
-        else if (m_currentClickAction == ClickAction::PUSH)
+        else if (m_currentClickAction == ClickAction::PUSH && entity != INVALID_ENTITY)
         {
             Vector3 force = ray.GetDirection() * 2.5f;
             if (m_scene.HasComponent<Particle>(entity))

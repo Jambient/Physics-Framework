@@ -19,7 +19,7 @@ public:
 				assert(dt > 0.0);
 
 				Vector3 newAcceleration = particle->Force * particle->InverseMass;
-				//newAcceleration += Vector3::Down * 9.8f;
+				newAcceleration += Vector3::Down * 9.8f;
 
 				// velocity verlet integration
 				transform->Position += particle->LinearVelocity * dt + particle->LastLinearAcceleration * 0.5f * dt * dt;
