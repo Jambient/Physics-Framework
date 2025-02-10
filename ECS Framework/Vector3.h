@@ -78,6 +78,11 @@ public:
 		return Vector3(x * scalar, y * scalar, z * scalar);
 	}
 
+	Vector3 operator/(float scalar) const
+	{
+		return Vector3(x / scalar, y / scalar, z / scalar);
+	}
+
 	void operator+=(const Vector3& other)
 	{
 		x += other.x;
@@ -104,6 +109,13 @@ public:
 		x *= scalar;
 		y *= scalar;
 		z *= scalar;
+	}
+
+	void operator/=(float scalar)
+	{
+		x /= scalar;
+		y /= scalar;
+		z /= scalar;
 	}
 
 	bool operator==(const Vector3& other) const
