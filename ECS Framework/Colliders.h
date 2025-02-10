@@ -10,12 +10,13 @@ enum class ColliderType
 {
 	Point,
 	Plane,
+	HalfSpaceTriangle,
 	Sphere,
 	AlignedBox,
 	OrientedBox
 };
 
-const int ColliderTypeCount = 4;
+const int ColliderTypeCount = 6;
 
 struct ColliderBase
 {
@@ -80,6 +81,13 @@ struct AABB : public ColliderBase
 	{
 		Vector3 halfExtents = scale * 0.5f;
 		return { position - halfExtents, position + halfExtents };
+	}
+
+	static AABB FromTriangle(const Vector3& p1, const Vector3& p2, const Vector3& p3)
+	{
+		Vector3 min = Vector3::Min(p1, Vector3::Min(p2, p3));
+		Vector3 max = Vector3::Max(p1, Vector3::Max(p2, p3));
+		return { min, max };
 	}
 
 	static AABB Union(const AABB& a, const AABB& b)
@@ -204,4 +212,14 @@ struct Sphere : public ColliderBase
 
 	Vector3 center;
 	float radius;
+};
+
+struct HalfSpaceTriangle : public ColliderBase
+{
+	HalfSpaceTriangle(const Vector3& point1, const Vector3& point2, const Vector3& point3) : ColliderBase(ColliderType::HalfSpaceTriangle), 
+		point1(point1), point2(point2), point3(point3) {}
+
+	Vector3 point1;
+	Vector3 point2;
+	Vector3 point3;
 };
