@@ -167,6 +167,7 @@
     <ClInclude Include="Structures.h" />
     <ClInclude Include="System.h" />
     <ClInclude Include="SystemManager.h" />
+    <ClInclude Include="Terrain.h" />
     <ClInclude Include="Timer.h" />
     <ClInclude Include="TypeIDGenerator.h" />
     <ClInclude Include="Vector3.h" />
@@ -201,6 +202,7 @@
     <ClCompile Include="OBJLoader.cpp" />
     <ClCompile Include="Ray.cpp" />
     <ClCompile Include="ShaderManager.cpp" />
+    <ClCompile Include="Terrain.cpp" />
     <ClCompile Include="Timer.cpp" />
     <ClCompile Include="Vector3.cpp" />
   </ItemGroup>
