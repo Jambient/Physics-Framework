@@ -227,6 +227,12 @@
   <ItemGroup>
     <Natvis Include="ImGui\imgui.natvis" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Terrain.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

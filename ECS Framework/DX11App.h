@@ -11,6 +11,7 @@
 #include "Vector3.h"
 #include "AABBTree.h"
 #include "Material.h"
+#include "Terrain.h"
 #include <vector>
 
 struct InstanceData
@@ -95,6 +96,8 @@ private:
 	std::vector<Vector3> m_debugPoints;
 
 	ClickAction m_currentClickAction;
+
+	Terrain* m_terrain;
 
 	/**
 	 * @brief Builds a ray pointing towards the provided position on the screen from the camera's position

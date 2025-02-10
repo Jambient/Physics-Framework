@@ -160,6 +160,9 @@
     </None>
     <None Include="ImGui\imgui.ini" />
     <None Include="ImGui\imgui.natstepfilter" />
+    <None Include="Terrain.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DX11App.cpp">

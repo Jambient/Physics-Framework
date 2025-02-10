@@ -3,13 +3,17 @@
 #include <string>
 #include <vector>
 #include "Structures.h"
+#include "ECSScene.h"
 
 class Terrain
 {
-	Terrain();
+public:
+	Terrain() {};
 	~Terrain();
 
-	bool Init(ID3D11Device* device, ID3D11DeviceContext* context, const std::string& heightMapFile, int fileWidth, int fileHeight, int terrainWidth, int terrainDepth, int terrainScale);
+	bool Init(ID3D11Device* device, ID3D11DeviceContext* context, const std::string& heightMapFile, int fileWidth, int fileHeight, int terrainWidth, int terrainDepth, int heightScale);
+	void BuildCollision(ECSScene* scene);
+	void Draw(ID3D11DeviceContext* context);
 
 private:
 	std::vector<float> m_heightData;
@@ -21,8 +25,8 @@ private:
 	ID3D11ShaderResourceView* m_rockMaterialSRV;
 	ID3D11ShaderResourceView* m_grassMaterialSRV;
 
-	std::vector<SimpleVertex>& m_vertices;
-	std::vector<UINT>& m_indices;
+	std::vector<SimpleVertex> m_vertices;
+	std::vector<UINT> m_indices;
 
 	void createGrid(int terrainWidth, int terrainDepth, int fileWidth, int fileHeight);
 	bool loadHeightMap(const std::string& filePath, int fileWidth, int fileHeight, int terrainScale);

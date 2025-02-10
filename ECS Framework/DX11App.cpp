@@ -162,6 +162,18 @@ HRESULT DX11App::Init()
 
     sm->RegisterConstantBuffer("SkyboxShader", "TransformBuffer", 0);
 
+    // terrain shader:
+    hr = sm->LoadVertexShader(m_windowHandle, "TerrainShader", L"Terrain.hlsl");
+    if (FAILED(hr)) { return hr; }
+    hr = sm->LoadPixelShader(m_windowHandle, "TerrainShader", L"Terrain.hlsl");
+    if (FAILED(hr)) { return hr; }
+    hr = sm->CreateInputLayout("TerrainShader", defaultInputLayout, ARRAYSIZE(defaultInputLayout));
+    if (FAILED(hr)) { return hr; }
+
+    sm->RegisterConstantBuffer("TerrainShader", "TransformBuffer", 0);
+    sm->RegisterConstantBuffer("TerrainShader", "GlobalBuffer", 1);
+    sm->RegisterConstantBuffer("TerrainShader", "LightBuffer", 2);
+
     // store the default ambient light into the global buffer
     m_globalBufferData.AmbientLight = XMFLOAT4(0.05f, 0.05f, 0.05f, 1.0f);
 
@@ -554,6 +566,10 @@ HRESULT DX11App::Init()
     //}
 
     ////////////////////////////////////////
+
+    // create terrain
+    m_terrain = new Terrain();
+    m_terrain->Init(m_device, m_immediateContext, "Textures/HeightMaps/RidgeHeightMap.raw", 1025, 1025, 200, 200, 100);
 
     m_instanceData.resize(MAX_ENTITIES);
 
@@ -1002,6 +1018,8 @@ void DX11App::Draw()
 
         m_immediateContext->DrawIndexed(meshData.IndexCount, 0, 0);
     });
+
+    m_terrain->Draw(m_immediateContext);
 
     ////////// DEBUG BOX RENDERING ////////////
 
