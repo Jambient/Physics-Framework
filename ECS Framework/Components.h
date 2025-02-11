@@ -65,7 +65,7 @@ struct Mesh
 
 struct Collider
 {
-	std::variant<OBB, Sphere, AABB, Point> Collider;
+	std::variant<OBB, Sphere, AABB, Point, HalfSpaceTriangle> Collider;
 
 	ColliderBase& GetColliderBase()
 	{

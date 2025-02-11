@@ -216,10 +216,11 @@ struct Sphere : public ColliderBase
 
 struct HalfSpaceTriangle : public ColliderBase
 {
-	HalfSpaceTriangle(const Vector3& point1, const Vector3& point2, const Vector3& point3) : ColliderBase(ColliderType::HalfSpaceTriangle), 
-		point1(point1), point2(point2), point3(point3) {}
+	HalfSpaceTriangle(const Vector3& point1, const Vector3& point2, const Vector3& point3, const Vector3& normal) : ColliderBase(ColliderType::HalfSpaceTriangle), 
+		point1(point1), point2(point2), point3(point3), normal(normal) {}
 
 	Vector3 point1;
 	Vector3 point2;
 	Vector3 point3;
+	Vector3 normal;
 };

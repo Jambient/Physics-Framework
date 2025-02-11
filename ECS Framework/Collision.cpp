@@ -448,6 +448,8 @@ CollisionManifold HandleAABBAABBCollision(const ColliderBase& a, const ColliderB
     CollisionManifold manifold;
     manifold.isColliding = false;
 
+    return manifold;
+
     if (AABB::Overlap(boxA, boxB))
     {
         manifold.isColliding = true;
@@ -482,10 +484,85 @@ CollisionManifold HandleAABBAABBCollision(const ColliderBase& a, const ColliderB
 
         manifold.collisionNormal = bestAxis;
         manifold.penetrationDepth = penetration;
-        //manifold.contactPoints.push_back()
     }
 
     return manifold;
+}
+
+CollisionManifold HandleHSTriHSTriCollision(const ColliderBase& a, const ColliderBase& b)
+{
+    CollisionManifold manifold;
+    manifold.isColliding = false;
+
+    return manifold;
+}
+
+CollisionManifold HandleHSTriSphereCollision(const ColliderBase& a, const ColliderBase& b)
+{
+    const HalfSpaceTriangle& triangleA = static_cast<const HalfSpaceTriangle&>(a);
+    const Sphere& sphereB = static_cast<const Sphere&>(b);
+
+    CollisionManifold manifold;
+    manifold.isColliding = false;
+
+    float distance = Vector3::Dot(sphereB.center - triangleA.point1, triangleA.normal);
+
+    if (distance < sphereB.radius)
+    {
+        manifold.isColliding = true;
+        manifold.collisionNormal = triangleA.normal;
+        manifold.penetrationDepth = sphereB.radius - distance;
+        manifold.contactPoints.push_back(sphereB.center - triangleA.normal * distance);
+    }
+
+    return manifold;
+
+    //// Triangle properties
+    //const Vector3& A = triangleA.point1;
+    //const Vector3& B = triangleA.point2;
+    //const Vector3& C = triangleA.point3;
+    //const Vector3& normal = triangleA.normal;  // Assumed to be unit length
+    //float planeD = Vector3::Dot(normal, A);         // Plane equation: dot(N, P) = D
+
+    //// Sphere properties
+    //const Vector3& sphereCenter = sphereB.center;
+    //float sphereRadius = sphereB.radius;
+
+    //// Compute signed distance from sphere center to triangle plane
+    //float distance = Vector3::Dot(normal, sphereCenter) - planeD;
+
+    //// If the sphere is too far from the plane, no collision
+    //if (std::abs(distance) > sphereRadius)
+    //    return manifold;
+
+    //// Compute the collision/contact point on the plane
+    //Vector3 closestPoint = sphereCenter - normal * distance;
+
+    //// Check if the closest point is inside the triangle
+    //Vector3 edge0 = B - A;
+    //Vector3 edge1 = C - B;
+    //Vector3 edge2 = A - C;
+
+    //Vector3 C0 = closestPoint - A;
+    //Vector3 C1 = closestPoint - B;
+    //Vector3 C2 = closestPoint - C;
+
+    //// Edge cross product tests to check if the point is inside
+    //if (Vector3::Dot(normal, Vector3::Cross(edge0, C0)) < 0.0f ||
+    //    Vector3::Dot(normal, Vector3::Cross(edge1, C1)) < 0.0f ||
+    //    Vector3::Dot(normal, Vector3::Cross(edge2, C2)) < 0.0f)
+    //{
+    //    // The point is outside the triangle, no collision
+    //    return manifold;
+    //}
+
+    //// Collision detected, construct manifold
+    //manifold.isColliding = true;
+    //manifold.contactPoints.push_back(closestPoint - normal * (sphereRadius - distance));  // Push out to avoid sinking
+    //manifold.collisionNormal = distance < 0.0f ? -normal : normal;  // Ensure normal points outward
+    //manifold.penetrationDepth = sphereRadius - std::abs(distance);
+
+    //return manifold;
 }
 
 CollisionManifold Collision::Collide(const ColliderBase& c1, const ColliderBase& c2)
@@ -533,5 +610,10 @@ void Collision::Init()
     Collision::RegisterCollisionHandler(ColliderType::Sphere, ColliderType::Sphere, HandleSphereSphereCollision);
 
     // aligned box vs ...
+    Collision::RegisterCollisionHandler(ColliderType::AlignedBox, ColliderType::AlignedBox, HandleAABBAABBCollision);
     Collision::RegisterCollisionHandler(ColliderType::AlignedBox, ColliderType::Sphere, HandleAABBSphereCollision);
+
+    // half space triangle vs ...
+    Collision::RegisterCollisionHandler(ColliderType::HalfSpaceTriangle, ColliderType::HalfSpaceTriangle, HandleHSTriHSTriCollision);
+    Collision::RegisterCollisionHandler(ColliderType::HalfSpaceTriangle, ColliderType::Sphere, HandleHSTriSphereCollision);
 }

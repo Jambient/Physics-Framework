@@ -75,12 +75,20 @@ bool Terrain::Init(ID3D11Device* device, ID3D11DeviceContext* context, const std
 
 void Terrain::BuildCollision(ECSScene* scene, AABBTree* tree)
 {
-	/*for (int i = 0; i < 3; i += 3)
+	for (int i = 0; i < 3; i += 3)
 	{
-		Vector3 p1 = m_indices[i];
-		Vector3 p2 = m_indices[i + 1];
-		Vector3 p3 = m_indices[i + 2];
+		SimpleVertex v1 = m_vertices[m_indices[i]];
+		SimpleVertex v2 = m_vertices[m_indices[i + 1]];
+		SimpleVertex v3 = m_vertices[m_indices[i + 2]];
+
+		Vector3 p1 = Vector3(v1.Pos.x, v1.Pos.y, v1.Pos.z) + Vector3::Down * 5;
+		Vector3 p2 = Vector3(v2.Pos.x, v2.Pos.y, v2.Pos.z) + Vector3::Down * 5;
+		Vector3 p3 = Vector3(v3.Pos.x, v3.Pos.y, v3.Pos.z) + Vector3::Down * 5;
 		Vector3 center = (p1 + p2 + p3) / 3.0f;
+
+		Vector3 e1 = p2 - p1;
+		Vector3 e2 = p3 - p1;
+		Vector3 normal = Vector3::Cross(e1, e2).normalized();
 
 		Entity entity = scene->CreateEntity();
 		scene->AddComponent(
@@ -97,11 +105,11 @@ void Terrain::BuildCollision(ECSScene* scene, AABBTree* tree)
 		);
 		scene->AddComponent(
 			entity,
-			Collider{ HalfSpaceTriangle(p1, p2, p3) }
+			Collider{ HalfSpaceTriangle(p1, p2, p3, normal) }
 		);
 
 		tree->InsertEntity(entity, AABB::FromTriangle(p1, p2, p3));
-	}*/
+	}
 }
 
 void Terrain::Draw(ID3D11DeviceContext* context)

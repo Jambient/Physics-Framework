@@ -570,6 +570,7 @@ HRESULT DX11App::Init()
     // create terrain
     m_terrain = new Terrain();
     m_terrain->Init(m_device, m_immediateContext, "Textures/HeightMaps/TestHeightMap.raw", 100, 100, 150, 150, 10);
+    m_terrain->BuildCollision(&m_scene, &m_aabbTree);
 
     m_instanceData.resize(MAX_ENTITIES);
 
@@ -686,6 +687,11 @@ void DX11App::Update()
 
         for (const auto [entity1, entity2] : potential)
         {
+            if (!m_scene.HasComponent<Collider>(entity1) || !m_scene.HasComponent<Collider>(entity2))
+            {
+                continue;
+            }
+
             Transform* e1Transform = m_scene.GetComponent<Transform>(entity1);
             Particle* e1Particle = m_scene.GetComponent<Particle>(entity1);
             RigidBody* e1RigidBody = m_scene.GetComponent<RigidBody>(entity1);
@@ -1031,7 +1037,7 @@ void DX11App::Draw()
 
     for (const Node& node : m_aabbTree.GetNodes())
     {
-        if (true)// m_aabbTree.GetNode(node.child1).isLeaf || m_aabbTree.GetNode(node.child2).isLeaf)
+        if (node.isLeaf)// m_aabbTree.GetNode(node.child1).isLeaf || m_aabbTree.GetNode(node.child2).isLeaf)
         {
             Vector3 boxPos = node.box.getPosition();
             Vector3 boxSize = node.box.getSize();
