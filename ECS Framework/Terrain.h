@@ -4,6 +4,7 @@
 #include <vector>
 #include "Structures.h"
 #include "ECSScene.h"
+#include "AABBTree.h"
 
 class Terrain
 {
@@ -12,7 +13,7 @@ public:
 	~Terrain();
 
 	bool Init(ID3D11Device* device, ID3D11DeviceContext* context, const std::string& heightMapFile, int fileWidth, int fileHeight, int terrainWidth, int terrainDepth, int heightScale);
-	void BuildCollision(ECSScene* scene);
+	void BuildCollision(ECSScene* scene, AABBTree* tree);
 	void Draw(ID3D11DeviceContext* context);
 
 private:
@@ -32,4 +33,7 @@ private:
 	bool loadHeightMap(const std::string& filePath, int fileWidth, int fileHeight, int terrainScale);
 
 	float getHeightAt(int x, int y);
+	void setHeightAt(int x, int y, float height);
+	bool inBounds(int x, int y);
+	float average(int xStart, int yStart);
 };

@@ -1,6 +1,7 @@
 #include "Terrain.h"
 #include "Material.h"
 #include "ShaderManager.h"
+#include "Components.h"
 #include <fstream>
 
 Terrain::~Terrain()
@@ -14,15 +15,15 @@ bool Terrain::Init(ID3D11Device* device, ID3D11DeviceContext* context, const std
 		return false;
 	}
 
-	m_heightMapWidth = terrainWidth;
-	m_heightMapDepth = terrainDepth;
+	m_heightMapWidth = fileWidth;
+	m_heightMapDepth = fileHeight;
 
 	// smooth height map
-	/*for (int x = 0; x < fileWidth; x++)
+	/*for (int y = 0; y < fileHeight; y++)
 	{
-		for (int y = 0; y < fileHeight; y++)
+		for (int x = 0; x < fileWidth; x++)
 		{
-			SetHeightAt(x, y, Average(x, y));
+			setHeightAt(x, y, average(x, y));
 		}
 	}*/
 
@@ -69,22 +70,49 @@ bool Terrain::Init(ID3D11Device* device, ID3D11DeviceContext* context, const std
 
 	m_grassMaterialSRV = grassMaterial->GetMaterialAsTextureArray(device, context);
 
-    return true;
+	return true;
 }
 
-void Terrain::BuildCollision(ECSScene* scene)
+void Terrain::BuildCollision(ECSScene* scene, AABBTree* tree)
 {
+	/*for (int i = 0; i < 3; i += 3)
+	{
+		Vector3 p1 = m_indices[i];
+		Vector3 p2 = m_indices[i + 1];
+		Vector3 p3 = m_indices[i + 2];
+		Vector3 center = (p1 + p2 + p3) / 3.0f;
 
+		Entity entity = scene->CreateEntity();
+		scene->AddComponent(
+			entity,
+			Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 0.0f, 0.15f }
+		);
+		scene->AddComponent(
+			entity,
+			Transform{ center, Quaternion(), Vector3::One }
+		);
+		scene->AddComponent(
+			entity,
+			RigidBody{ Vector3::Zero, Vector3::Zero, Vector3::Zero, Matrix3(Vector3::Zero) }
+		);
+		scene->AddComponent(
+			entity,
+			Collider{ HalfSpaceTriangle(p1, p2, p3) }
+		);
+
+		tree->InsertEntity(entity, AABB::FromTriangle(p1, p2, p3));
+	}*/
 }
 
 void Terrain::Draw(ID3D11DeviceContext* context)
 {
 	ShaderManager* sm = ShaderManager::GetInstance();
 	TransformBuffer transformBuffer;
-	
+
 	if (sm->GetConstantBufferData<TransformBuffer>("TransformBuffer", transformBuffer))
 	{
-		transformBuffer.World = XMMatrixTranspose(XMMatrixIdentity());
+		//transformBuffer.World = XMMatrixTranspose(XMMatrixIdentity());
+		transformBuffer.World = XMMatrixTranspose(XMMatrixTranslation(0.0f, -5.0f, 0.0f));
 		sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformBuffer);
 	}
 
@@ -123,18 +151,17 @@ void Terrain::createGrid(int terrainWidth, int terrainDepth, int fileWidth, int 
 			float mapHeight = getHeightAt(x, y);
 			m_vertices[index].Pos = XMFLOAT3(xPos, mapHeight, zPos);
 
-			// set normal
-			XMFLOAT3 normal(0.0f, 1.0f, 0.0f);
-			XMVECTOR tangentVec = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
-			/*float heightL = getHeightAt(j - 1, i);
-			float heightR = getHeightAt(j + 1, i);
-			float heightU = getHeightAt(j, i + 1);
-			float heightD = getHeightAt(j, i - 1);
+			float diffX = getHeightAt(x + 1, y) - getHeightAt(x - 1, y);
+			float diffZ = getHeightAt(x, y + 1) - getHeightAt(x, y - 1);
 
-			XMVECTOR tangentVec = XMVectorSet(2.0f * dx, heightL - heightR, 0.0f, 0.0f);
-			XMVECTOR bitangentVec = XMVectorSet(0.0f, heightU - heightD, 2.0f * dz, 0.0f);
-			XMStoreFloat3(&normal, XMVector3Normalize(XMVector3Cross(tangentVec, bitangentVec)));*/
+			XMVECTOR tangentVec = XMVectorSet(2.0f * dx, diffX, 0.0f, 0.0f);
+			XMVECTOR bitangentVec = XMVectorSet(0.0f, diffZ, 2.0f * dz, 0.0f);
 
+			// To get an upward-pointing normal, take the cross product in the proper order.
+			XMVECTOR normalVec = XMVector3Normalize(XMVector3Cross(bitangentVec, tangentVec));
+
+			XMFLOAT3 normal;
+			XMStoreFloat3(&normal, normalVec);
 			m_vertices[index].Normal = normal;
 
 			// Compute and set tangent
@@ -156,12 +183,12 @@ void Terrain::createGrid(int terrainWidth, int terrainDepth, int fileWidth, int 
 		for (UINT x = 0; x < fileWidth - 1; x++)
 		{
 			m_indices[k] = y * fileWidth + x;
-			m_indices[k + 1] = (y + 1) * fileWidth + x;
-			m_indices[k + 2] = y * fileWidth + (x + 1);
+			m_indices[k + 1] = y * fileWidth + (x + 1);
+			m_indices[k + 2] = (y + 1) * fileWidth + x;
 
 			m_indices[k + 3] = y * fileWidth + (x + 1);
-			m_indices[k + 4] = (y + 1) * fileWidth + x;
-			m_indices[k + 5] = (y + 1) * fileWidth + (x + 1);
+			m_indices[k + 4] = (y + 1) * fileWidth + (x + 1);
+			m_indices[k + 5] = (y + 1) * fileWidth + x;
 
 			k += 6;
 		}
@@ -192,6 +219,8 @@ bool Terrain::loadHeightMap(const std::string& filePath, int fileWidth, int file
 		m_heightData[i] = (in[i] / 255.0f) * heightScale;
 	}
 
+	float test = in[imageSize - 1];
+
 	return true;
 }
 
@@ -203,4 +232,34 @@ float Terrain::getHeightAt(int x, int y)
 	if (y >= m_heightMapDepth) y = m_heightMapDepth - 1;
 
 	return m_heightData[y * m_heightMapWidth + x];
+}
+
+void Terrain::setHeightAt(int x, int y, float height)
+{
+	m_heightData[y * m_heightMapWidth + x] = height;
+}
+
+bool Terrain::inBounds(int x, int y)
+{
+	return x >= 0 && x < m_heightMapWidth && y >= 0 && y < m_heightMapDepth;
+}
+
+float Terrain::average(int xStart, int yStart)
+{
+	float avg = 0.0f;
+	float num = 0.0f;
+
+	for (int x = xStart - 3; x <= xStart + 3; x++)
+	{
+		for (int y = yStart - 3; y <= yStart + 3; y++)
+		{
+			if (inBounds(x, y))
+			{
+				avg += getHeightAt(x, y);
+				num += 1.0f;
+			}
+		}
+	}
+
+	return avg / num;
 }
