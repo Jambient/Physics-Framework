@@ -569,7 +569,7 @@ HRESULT DX11App::Init()
 
     // create terrain
     m_terrain = new Terrain();
-    m_terrain->Init(m_device, m_immediateContext, "Textures/HeightMaps/RidgeHeightMap.raw", 1025, 1025, 200, 200, 100);
+    m_terrain->Init(m_device, m_immediateContext, "Textures/HeightMaps/TestHeightMap.raw", 100, 100, 150, 150, 10);
 
     m_instanceData.resize(MAX_ENTITIES);
 
