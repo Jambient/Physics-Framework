@@ -28,7 +28,7 @@ public:
 		m_entityManager = std::make_shared<EntityManager>();
 		m_systemManager = std::make_shared<SystemManager>();
 	}
-	
+
 	// ENTITY METHODS
 
 	/**
@@ -127,6 +127,7 @@ public:
 	void AddComponent(Entity entity, T component)
 	{
 		Signature oldSignature = m_entityManager->GetSignature(entity);
+
 		assert(!oldSignature.test(m_componentManager->GetComponentType<T>()) && "Component already added to entity");
 
 		Signature newSignature = m_componentManager->AddComponent<T>(entity, oldSignature, component);
@@ -143,13 +144,13 @@ public:
 	template <typename T>
 	void RemoveComponent(Entity entity)
 	{
-		m_componentManager->RemoveComponent<T>(entity);
+		Signature oldSignature = m_entityManager->GetSignature(entity);
+		assert(oldSignature.test(m_componentManager->GetComponentType<T>()) && "Component does not exist on this entity");
 
-		Signature signature = m_entityManager->GetSignature(entity);
-		signature.set(m_componentManager->GetComponentType<T>(), false);
-		m_entityManager->SetSignature(entity, signature);
+		Signature newSignature = m_componentManager->RemoveComponent<T>(entity, oldSignature);
+		m_entityManager->SetSignature(entity, newSignature);
 
-		m_systemManager->EntitySignatureChanged(entity, signature);
+		m_systemManager->EntitySignatureChanged(entity, newSignature);
 	}
 
 	/**
@@ -199,7 +200,7 @@ private:
 	template <typename... Components>
 	Signature BuildSignature()
 	{
-		static const Signature signature( sum( (std::powf(2, (float)m_componentManager->GetComponentType<Components>()))... ) );
+		static const Signature signature(sum((std::powf(2, (float)m_componentManager->GetComponentType<Components>()))...));
 		return signature;
 	}
 

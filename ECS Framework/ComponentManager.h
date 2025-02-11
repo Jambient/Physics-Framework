@@ -25,7 +25,6 @@ public:
 	 */
 	ComponentManager()
 	{
-		m_componentSets.resize(MAX_COMPONENT_TYPES);
 		m_componentSizes = { 0 };
 	}
 
@@ -37,8 +36,8 @@ public:
 	void RegisterComponent()
 	{
 		std::size_t typeIndex = GetTypeIndex<T>();
+		assert(m_componentSizes[typeIndex] == 0 && "Component has already been registered.");
 
-		m_componentSets[typeIndex] = std::make_shared<SparseSet<T>>();
 		m_componentSizes[typeIndex] = sizeof(T);
 	}
 
@@ -103,9 +102,42 @@ public:
 	}
 
 	template <typename T>
-	void RemoveComponent(Entity entity)
+	void RemoveComponent(Entity entity, Signature signature)
 	{
-		GetComponentArray<T>()->RemoveComponent(entity);
+		Signature oldSignature = signature;
+
+		// update signature with new component
+		ComponentType removedComponentType = GetComponentType<T>();
+		signature.set(removedComponentType, false);
+
+		// get component data and remove entity from old archetype
+		std::vector<ComponentData> componentData;
+		std::shared_ptr<Archetype> oldArchetype = m_archetypes[oldSignature];
+		componentData = oldArchetype->GetComponentData(entity);
+		oldArchetype->RemoveEntity(entity);
+
+		// confirm the entity still has any components left
+		if (signature.any())
+		{
+			// check if the new signatures archetype already exists
+			std::shared_ptr<Archetype> newArchetype;
+			if (m_archetypes.find(signature) != m_archetypes.end())
+			{
+				newArchetype = m_archetypes[signature];
+			}
+			else
+			{
+				// create a new archetype with this signature
+				newArchetype = std::make_shared<Archetype>(signature, m_componentSizes);
+				m_archetypes[signature] = newArchetype;
+			}
+
+			std::erase_if(componentData, [removedComponentType](ComponentData compData) { return compData.type == removedComponentType; });
+
+			newArchetype->AddEntity(entity, componentData);
+		}
+
+		return signature;
 	}
 
 	template <typename T>
@@ -113,12 +145,6 @@ public:
 	{
 		std::shared_ptr<Archetype> archetype = m_archetypes[signature];
 		return archetype->GetComponent<T>(entity);
-	}
-
-	template <typename T>
-	std::vector<T>& GetAllComponents()
-	{
-		return GetComponentArray<T>()->GetAllComponents();
 	}
 
 	std::vector<std::shared_ptr<Archetype>> GetArchetypes(Signature signature)
@@ -145,19 +171,7 @@ public:
 
 private:
 	std::array<size_t, MAX_COMPONENT_TYPES> m_componentSizes;
-	std::vector<std::shared_ptr<ISparseSet>> m_componentSets;
 	std::unordered_map<Signature, std::shared_ptr<Archetype>> m_archetypes;
-	ComponentType m_nextComponentType = 0;
-
-	template <typename T>
-	SparseSet<T>* GetComponentArray()
-	{
-		size_t typeIndex = GetTypeIndex<T>();
-
-		//assert(m_componentTypes.find(typeHash) != m_componentTypes.end() && "Component not registered before use.");
-
-		return static_cast<SparseSet<T>*>(m_componentSets[typeIndex].get());
-	}
 
 	template <typename T>
 	size_t GetTypeIndex()
