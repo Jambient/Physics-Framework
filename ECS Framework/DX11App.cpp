@@ -11,6 +11,7 @@
 #include <random>
 #include <sstream>
 #include <format>
+#include <variant>
 #include "DDSTextureLoader.h"
 
 #define ThrowIfFailed(x)  if (FAILED(x)) { throw new std::bad_exception;}
@@ -357,30 +358,30 @@ HRESULT DX11App::Init()
         (1.0f / 12.0f) * 2.0f * (3.0f + 1.0f)
     ).reciprocal();
 
-    Vector3 testObjectPosition = Vector3::Up * 5.0f + Vector3::Right * 1.5f;
-    Quaternion testObjectRotation = Quaternion::FromEulerAngles(Vector3(0.0f, 0.0, XMConvertToRadians(30.0f)));
-    m_scene.AddComponent(
-        entities[1],
-        Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 1.0f / 2.0f, 0.0f }
-    );
-    m_scene.AddComponent(
-        entities[1],
-        Transform{ testObjectPosition, testObjectRotation, Vector3(3.0f, 1.0f, 3.0f)}
-        //Transform{ testObjectPosition, Quaternion(), Vector3(3.0f, 1.0f, 3.0f) }
-    );
-    m_scene.AddComponent(
-        entities[1],
-        RigidBody{ Vector3::Zero, Vector3::Zero, testInverseInertia, Matrix3(testInverseInertia) }
-    );
-    m_scene.AddComponent(
-        entities[1],
-        Collider{ OBB(testObjectPosition, Vector3::One, testObjectRotation) }
-    );
-    m_scene.AddComponent(
-        entities[1],
-        Mesh{ MeshLoader::GetMeshID("Cube") }
-    );
-    m_aabbTree.InsertEntity(entities[1], AABB::FromPositionScale(testObjectPosition, Vector3::One));
+    //Vector3 testObjectPosition = Vector3::Up * 5.0f + Vector3::Right * 1.5f;
+    //Quaternion testObjectRotation = Quaternion::FromEulerAngles(Vector3(0.0f, 0.0, XMConvertToRadians(30.0f)));
+    //m_scene.AddComponent(
+    //    entities[1],
+    //    Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 1.0f / 2.0f, 0.0f }
+    //);
+    //m_scene.AddComponent(
+    //    entities[1],
+    //    Transform{ testObjectPosition, testObjectRotation, Vector3(3.0f, 1.0f, 3.0f)}
+    //    //Transform{ testObjectPosition, Quaternion(), Vector3(3.0f, 1.0f, 3.0f) }
+    //);
+    //m_scene.AddComponent(
+    //    entities[1],
+    //    RigidBody{ Vector3::Zero, Vector3::Zero, testInverseInertia, Matrix3(testInverseInertia) }
+    //);
+    //m_scene.AddComponent(
+    //    entities[1],
+    //    Collider{ OBB(testObjectPosition, Vector3::One, testObjectRotation) }
+    //);
+    //m_scene.AddComponent(
+    //    entities[1],
+    //    Mesh{ MeshLoader::GetMeshID("Cube") }
+    //);
+    //m_aabbTree.InsertEntity(entities[1], AABB::FromPositionScale(testObjectPosition, Vector3::One));
 
     // CLOTH
     /*m_scene.AddComponent(
@@ -643,6 +644,11 @@ void DX11App::Update()
 
             CollisionManifold info = Collision::Collide(e1Collider, e2Collider);
             if (!info) { continue; } // Skip if narrow-phase fails
+
+            /*std::cout << "New collision" << std::endl;
+            std::cout << "Normal: " << info.collisionNormal << std::endl;
+            std::cout << "Depth: " << info.penetrationDepth << std::endl;
+            std::cout << "-------------------------" << std::endl;*/
 
             // (Optional) Collect debug contact points.
             m_debugPoints.insert(m_debugPoints.end(), info.contactPoints.begin(), info.contactPoints.end());

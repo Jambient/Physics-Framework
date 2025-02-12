@@ -75,7 +75,7 @@ bool Terrain::Init(ID3D11Device* device, ID3D11DeviceContext* context, const std
 
 void Terrain::BuildCollision(ECSScene* scene, AABBTree* tree)
 {
-	for (int i = 0; i < 3 * 2000; i += 3)
+	for (int i = 0; i < m_indices.size(); i += 3)
 	{
 		SimpleVertex v1 = m_vertices[m_indices[i]];
 		SimpleVertex v2 = m_vertices[m_indices[i + 1]];

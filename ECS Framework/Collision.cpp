@@ -509,10 +509,27 @@ CollisionManifold HandleHSTriSphereCollision(const ColliderBase& a, const Collid
 
     if (distance < sphereB.radius)
     {
-        manifold.isColliding = true;
-        manifold.collisionNormal = triangleA.normal;
-        manifold.penetrationDepth = sphereB.radius - distance;
-        manifold.contactPoints.push_back(sphereB.center - triangleA.normal * distance);
+        // barycentric coordinate check to confirm point is inside triangle
+        Vector3 contactPoint = sphereB.center - triangleA.normal * distance;
+
+        Vector3 AB = triangleA.point2 - triangleA.point1;
+        Vector3 AC = triangleA.point3 - triangleA.point1;
+        Vector3 PA = triangleA.point1 - contactPoint;
+        Vector3 PB = triangleA.point2 - contactPoint;
+        Vector3 PC = triangleA.point3 - contactPoint;
+
+        float area = 0.5f * Vector3::Cross(AB, AC).magnitude();
+        float a = (0.5f * Vector3::Cross(PB, PC).magnitude()) / area;
+        float b = (0.5f * Vector3::Cross(PC, PA).magnitude()) / area;
+        float c = (0.5f * Vector3::Cross(PA, PB).magnitude()) / area;
+
+        if (a >= 0 && b >= 0 && c >= 0)
+        {
+            manifold.isColliding = true;
+            manifold.collisionNormal = triangleA.normal;
+            manifold.penetrationDepth = sphereB.radius - distance;
+            manifold.contactPoints.push_back(contactPoint);
+        }
     }
 
     return manifold;
@@ -583,7 +600,7 @@ void Collision::RegisterCollisionHandler(ColliderType typeA, ColliderType typeB,
         dispatchTable[indexB][indexA] = [handler](const ColliderBase& a, const ColliderBase& b)
         {
             CollisionManifold manifold = handler(b, a);
-            //manifold.collisionNormal = -manifold.collisionNormal;
+            manifold.collisionNormal = -manifold.collisionNormal;
             return manifold;
         };
     }
