@@ -507,21 +507,25 @@ CollisionManifold HandleHSTriSphereCollision(const ColliderBase& a, const Collid
 
     float distance = Vector3::Dot(sphereB.center - triangleA.point1, triangleA.normal);
 
-    if (distance < sphereB.radius)
+    if (distance >= 0 && distance <= sphereB.radius)
     {
         // barycentric coordinate check to confirm point is inside triangle
         Vector3 contactPoint = sphereB.center - triangleA.normal * distance;
 
         Vector3 AB = triangleA.point2 - triangleA.point1;
         Vector3 AC = triangleA.point3 - triangleA.point1;
+
+        // degenerate triangle check
+        float area = Vector3::Cross(AB, AC).magnitude();
+        if (area < 1e-6f) { return manifold; }
+
         Vector3 PA = triangleA.point1 - contactPoint;
         Vector3 PB = triangleA.point2 - contactPoint;
         Vector3 PC = triangleA.point3 - contactPoint;
 
-        float area = 0.5f * Vector3::Cross(AB, AC).magnitude();
-        float a = (0.5f * Vector3::Cross(PB, PC).magnitude()) / area;
-        float b = (0.5f * Vector3::Cross(PC, PA).magnitude()) / area;
-        float c = (0.5f * Vector3::Cross(PA, PB).magnitude()) / area;
+        float a = Vector3::Cross(PB, PC).magnitude() / area;
+        float b = Vector3::Cross(PC, PA).magnitude() / area;
+        float c = Vector3::Cross(PA, PB).magnitude() / area;
 
         if (a >= 0 && b >= 0 && c >= 0)
         {
