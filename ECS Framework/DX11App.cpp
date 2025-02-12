@@ -1035,27 +1035,29 @@ void DX11App::Draw()
     MeshData cubeMeshData = MeshLoader::GetMesh("Cube");
     MeshData sphereMeshData = MeshLoader::GetMesh("Sphere");
 
-    //for (const Node& node : m_aabbTree.GetNodes())
-    //{
-    //    if (node.isLeaf)// m_aabbTree.GetNode(node.child1).isLeaf || m_aabbTree.GetNode(node.child2).isLeaf)
-    //    {
-    //        Vector3 boxPos = node.box.getPosition();
-    //        Vector3 boxSize = node.box.getSize();
+    XMFLOAT3 camPosDX = m_camera->GetPosition();
+    Vector3 camPos = Vector3(camPosDX.x, camPosDX.y, camPosDX.z);
+    for (const Node& node : m_aabbTree.GetNodes())
+    {
+        Vector3 boxPos = node.box.getPosition();
+        if (node.isLeaf && (boxPos - camPos).magnitude() <= 10.0f)// m_aabbTree.GetNode(node.child1).isLeaf || m_aabbTree.GetNode(node.child2).isLeaf)
+        {
+            Vector3 boxSize = node.box.getSize();
 
-    //        XMMATRIX transform = XMMatrixScaling(boxSize.x, boxSize.y, boxSize.z) * XMMatrixTranslation(boxPos.x, boxPos.y, boxPos.z);
+            XMMATRIX transform = XMMatrixScaling(boxSize.x, boxSize.y, boxSize.z) * XMMatrixTranslation(boxPos.x, boxPos.y, boxPos.z);
 
-    //        transformData.World = XMMatrixTranspose(transform);
-    //        sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
+            transformData.World = XMMatrixTranspose(transform);
+            sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
 
-    //        UINT stride = cubeMeshData.VBStride;
-    //        UINT offset = cubeMeshData.VBOffset;
+            UINT stride = cubeMeshData.VBStride;
+            UINT offset = cubeMeshData.VBOffset;
 
-    //        m_immediateContext->IASetVertexBuffers(0, 1, &cubeMeshData.VertexBuffer, &stride, &offset);
-    //        m_immediateContext->IASetIndexBuffer(cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+            m_immediateContext->IASetVertexBuffers(0, 1, &cubeMeshData.VertexBuffer, &stride, &offset);
+            m_immediateContext->IASetIndexBuffer(cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
-    //        m_immediateContext->DrawIndexed(cubeMeshData.IndexCount, 0, 0);
-    //    }
-    //}
+            m_immediateContext->DrawIndexed(cubeMeshData.IndexCount, 0, 0);
+        }
+    }
 
     for (const Vector3& point : m_debugPoints)
     {
