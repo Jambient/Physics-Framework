@@ -92,9 +92,7 @@ public:
 		{
 			if (signature[i])
 			{
-				// need to change this to properly get component size
-				//m_componentColumns.emplace((ComponentType)i, Column(componentSizes[i]));
-				m_componentColumns[(ComponentType)i] = Column(componentSizes[i]);
+				m_componentColumns[i] = Column(componentSizes[i]);
 			}
 		}
 	}
@@ -107,7 +105,7 @@ public:
 		constexpr size_t componentCount = sizeof...(Components);
 
 		// create an array of the used component columns in this archetype
-		std::array<Column*, componentCount> orderedColumns = { (&m_componentColumns[(ComponentType)TypeIndexGenerator::GetTypeIndex<Components>()])... };
+		std::array<Column*, componentCount> orderedColumns = { (&m_componentColumns[TypeIndexGenerator::GetTypeIndex<Components>()])... };
 
 		// for each entity gets its component data and execute the callback
 		for (size_t i = 0; i < m_entityCount; i++) {
@@ -127,7 +125,7 @@ public:
 		m_denseIndexToEntity.push_back(entity);
 
 		for (const ComponentData& component : components) {
-			assert(m_componentColumns.find(component.type) != m_componentColumns.end() && "Component type not present in this archetype!");
+			assert(m_signature.test(component.type) && "Component type not present in this archetype!");
 
 			m_componentColumns[component.type].AddComponent(component.data);
 		}
@@ -136,16 +134,20 @@ public:
 	template<typename T>
 	T* GetComponent(Entity entity)
 	{
-		return m_componentColumns[(ComponentType)TypeIndexGenerator::GetTypeIndex<T>()].GetComponentData<T>(m_entityToDenseIndex[entity]);
+		return m_componentColumns[TypeIndexGenerator::GetTypeIndex<T>()].GetComponentData<T>(m_entityToDenseIndex[entity]);
 	}
 
 	std::vector<ComponentData> GetComponentData(Entity entity)
 	{
 		std::vector<ComponentData> componentData;
 
-		for (auto& pair : m_componentColumns) {
-			const ComponentData data = { pair.first, pair.second.GetComponent(m_entityToDenseIndex[entity]) };
-			componentData.push_back(data);
+		for (size_t i = 0; i < MAX_COMPONENT_TYPES; i++)
+		{
+			if (m_signature[i])
+			{
+				const ComponentData data = { (ComponentType)i, m_componentColumns[i].GetComponent(m_entityToDenseIndex[entity]) };
+				componentData.push_back(data);
+			}
 		}
 
 		return componentData;
@@ -160,8 +162,12 @@ public:
 		size_t lastEntityIndex = (size_t)m_entityCount - 1;
 
 		// remove the entities components from all columns
-		for (auto& pair : m_componentColumns) {
-			pair.second.RemoveComponent(removedEntityIndex);
+		for (size_t i = 0; i < MAX_COMPONENT_TYPES; i++)
+		{
+			if (m_signature[i])
+			{
+				m_componentColumns[i].RemoveComponent(removedEntityIndex);
+			}
 		}
 
 		Entity lastEntity = m_denseIndexToEntity[lastEntityIndex];
@@ -181,7 +187,7 @@ private:
 
 	Signature m_signature;
 	Entity m_entityCount;
-	std::unordered_map<ComponentType, Column> m_componentColumns;
+	std::array<Column, MAX_COMPONENT_TYPES> m_componentColumns;
 	std::vector<Entity> m_denseIndexToEntity;    // Maps dense index -> entity
 	std::vector<size_t> m_entityToDenseIndex;    // Maps entity -> dense index
 };
