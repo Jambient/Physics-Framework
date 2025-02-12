@@ -35,9 +35,10 @@ Node& AABBTree::GetNodeFromEntity(Entity entity)
 	return m_nodes[m_nodeToDenseIndex[m_entityToNodeIndex[entity]]];
 }
 
-void AABBTree::InsertEntity(Entity entity, AABB box)
+void AABBTree::InsertEntity(Entity entity, AABB box, bool isStatic)
 {
 	int leafIndex = AllocateLeafNode(entity, box);
+	GetNode(leafIndex).isStatic = isStatic;
 	m_entityToNodeIndex[entity] = leafIndex;
 
 	if (m_rootIndex == NULL_NODE_INDEX)
@@ -160,6 +161,8 @@ void AABBTree::TriggerUpdate(Entity entity)
 	// check if the entity actually exists in the tree
 	if (leafIndex == NULL_NODE_INDEX) { return; }
 
+	if (GetNode(leafIndex).isStatic) { return; }
+
 	// check if the leaf node actually needs updating
 	if (!NeedsUpdate(leafIndex)) 
 	{ 
@@ -170,7 +173,7 @@ void AABBTree::TriggerUpdate(Entity entity)
 	AABB previousBox = GetNode(leafIndex).box;
 
 	RemoveLeaf(leafIndex);
-	InsertEntity(entity, previousBox);
+	InsertEntity(entity, previousBox, false);
 }
 
 Entity AABBTree::Intersect(const Ray& ray, float& closestDistance)
@@ -317,6 +320,7 @@ void AABBTree::PotentialIntersectionHelper(std::vector<std::pair<Entity, Entity>
 	const Node& b = GetNode(nodeB);
 
 	if (!AABB::Overlap(a.box, b.box)) return;
+	if (a.isStatic && b.isStatic) return;
 
 	if (a.isLeaf && b.isLeaf && a.entity != b.entity) {
 		uint64_t a64 = (uint64_t)a.entity;
@@ -471,6 +475,7 @@ void AABBTree::RefitFromNode(int index, bool rotateTree)
 		Node& child2 = GetNode(currentNode.child2);
 
 		currentNode.box = AABB::Union(child1.box, child2.box);
+		currentNode.isStatic = child1.isStatic && child2.isStatic;
 
 		index = currentNode.parentIndex;
 	}

@@ -32,6 +32,7 @@ struct Node
 	int child1 = NULL_NODE_INDEX; // Node index for left child node. Internal nodes only.
 	int child2 = NULL_NODE_INDEX; // Node index for right child node. Internal nodes only.
 	bool isLeaf = false; // Flag indicating whether this node is a leaf.
+	bool isStatic = false;
 };
 
 /**
@@ -71,7 +72,7 @@ public:
 	 * @param entity The ECS entity to associate with the new node.
 	 * @param box The bounding box for the new node.
 	 */
-	void InsertEntity(Entity entity, AABB box);
+	void InsertEntity(Entity entity, AABB box, bool isStatic = false);
 
 	/**
 	 * @brief Removes a leaf node from the tree.

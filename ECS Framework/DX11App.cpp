@@ -301,7 +301,7 @@ HRESULT DX11App::Init()
         entities[0],
         Mesh{ MeshLoader::GetMeshID("Cube") }
     );
-    m_aabbTree.InsertEntity(entities[0], AABB::FromPositionScale(Vector3::Zero, Vector3(10.0f, 1.0f, 10.0f)));
+    m_aabbTree.InsertEntity(entities[0], AABB::FromPositionScale(Vector3::Zero, Vector3(10.0f, 1.0f, 10.0f)), true);
 
     // walls
     m_scene.AddComponent(
@@ -325,61 +325,7 @@ HRESULT DX11App::Init()
         entities[2],
         Mesh{ MeshLoader::GetMeshID("Cube") }
     );
-    m_aabbTree.InsertEntity(entities[2], AABB::FromPositionScale(Vector3(0.0f, 3.1, 5.6f), Vector3(10.0f, 5.0f, 1.0f)));
-
-
-    // DEBUG POINTS
-    Vector3 debugPointSize = Vector3(0.1f, 0.1f, 0.1f);
-
-    Entity currentEntityNum = m_scene.CreateEntity();
-    m_scene.AddComponent(
-        currentEntityNum,
-        Transform{ Vector3(-1.54f, 0.5f, -1.50f), Quaternion(), debugPointSize }
-    );
-    m_scene.AddComponent(
-        currentEntityNum,
-        Mesh{ MeshLoader::GetMeshID("Sphere") }
-    );
-
-    currentEntityNum = m_scene.CreateEntity();
-    m_scene.AddComponent(
-        currentEntityNum,
-        Transform{ Vector3(-1.54f, 0.5f, 1.50f), Quaternion(), debugPointSize }
-    );
-    m_scene.AddComponent(
-        currentEntityNum,
-        Mesh{ MeshLoader::GetMeshID("Sphere") }
-    );
-
-    /*currentEntityNum = m_scene.CreateEntity();
-    m_scene.AddComponent(
-        currentEntityNum,
-        Transform{ Vector3(-1.5f, 1.46f, -1.50f), Quaternion(), debugPointSize }
-    );
-    m_scene.AddComponent(
-        currentEntityNum,
-        Mesh{ MeshLoader::GetMeshID("Sphere") }
-    );
-
-    currentEntityNum = m_scene.CreateEntity();
-    m_scene.AddComponent(
-        currentEntityNum,
-        Transform{ Vector3(-1.50f, 1.46f, 1.50f), Quaternion(), debugPointSize }
-    );
-    m_scene.AddComponent(
-        currentEntityNum,
-        Mesh{ MeshLoader::GetMeshID("Sphere") }
-    );*/
-
-    /*currentEntityNum = m_scene.CreateEntity();
-    m_scene.AddComponent(
-        currentEntityNum,
-        Transform{ Vector3(1.50f, 0.96, 0.0f), Quaternion(), debugPointSize }
-    );
-    m_scene.AddComponent(
-        currentEntityNum,
-        Mesh{ MeshLoader::GetMeshID("Sphere") }
-    );*/
+    m_aabbTree.InsertEntity(entities[2], AABB::FromPositionScale(Vector3(0.0f, 3.1, 5.6f), Vector3(10.0f, 5.0f, 1.0f)), true);
 
     // cube
     //m_scene.AddComponent(
@@ -679,129 +625,177 @@ void DX11App::Update()
         });
 
         // collisions detection + resolution
+        // 1. Collect collision manifolds from the broad-phase potential pairs
+        std::vector<std::tuple<Entity, Entity, CollisionManifold>> collisions;
         std::vector<std::pair<Entity, Entity>> potential = m_aabbTree.GetPotentialIntersections();
-
-        /*std::cout << "Collision Count: " << potential.size() << std::endl;*/
-
         m_debugPoints.clear();
 
         for (const auto [entity1, entity2] : potential)
         {
-            if (!m_scene.HasComponent<Collider>(entity1) || !m_scene.HasComponent<Collider>(entity2))
+            if (!m_scene.HasComponent<Collider>(entity1) ||
+                !m_scene.HasComponent<Collider>(entity2))
             {
                 continue;
             }
-
-            Transform* e1Transform = m_scene.GetComponent<Transform>(entity1);
-            Particle* e1Particle = m_scene.GetComponent<Particle>(entity1);
-            RigidBody* e1RigidBody = m_scene.GetComponent<RigidBody>(entity1);
-            Transform* e2Transform = m_scene.GetComponent<Transform>(entity2);
-            Particle* e2Particle = m_scene.GetComponent<Particle>(entity2);
-            RigidBody* e2RigidBody = m_scene.GetComponent<RigidBody>(entity2);
 
             ColliderBase& e1Collider = m_scene.GetComponent<Collider>(entity1)->GetColliderBase();
             ColliderBase& e2Collider = m_scene.GetComponent<Collider>(entity2)->GetColliderBase();
 
             CollisionManifold info = Collision::Collide(e1Collider, e2Collider);
-            if (!info) { continue; } // continue if narrow phase check fails
+            if (!info) { continue; } // Skip if narrow-phase fails
 
-            /*std::cout << "COLLISION INFO: " << std::endl;
-            std::cout << "normal: " << info.collisionNormal << std::endl;
-            std::cout << "depth: " << info.penetrationDepth << std::endl;
-            std::cout << "--------------" << std::endl;*/
-
-            float totalMass = e1Particle->InverseMass + e2Particle->InverseMass;
-            e1Transform->Position -= info.collisionNormal * info.penetrationDepth * (e1Particle->InverseMass / totalMass);
-            e2Transform->Position += info.collisionNormal * info.penetrationDepth * (e2Particle->InverseMass / totalMass);
-
-            float j = 0.0f;
-
+            // (Optional) Collect debug contact points.
             m_debugPoints.insert(m_debugPoints.end(), info.contactPoints.begin(), info.contactPoints.end());
-            //std::cout << "COLLISION POINTS: " << info.contactPoints.size() << std::endl;
 
-            for (const Vector3& contactPoint : info.contactPoints)
+            collisions.emplace_back(entity1, entity2, info);
+        }
+
+        // 2. Iteratively resolve velocities (normal collision impulses and friction)
+        //    This is similar to how many physics engines run several iterations to converge
+        const int velocityIterations = 10;
+        for (int iter = 0; iter < velocityIterations; ++iter)
+        {
+            // Loop over each collision manifold
+            for (auto& collision : collisions)
             {
-                //std::cout << contactPoint << std::endl;
+                Entity entity1, entity2;
+                CollisionManifold manifold;
+                std::tie(entity1, entity2, manifold) = collision;
 
-                Vector3 relativeA = contactPoint - e1Transform->Position;
-                Vector3 relativeB = contactPoint - e2Transform->Position;
+                // Retrieve components for both bodies
+                Transform* e1Transform = m_scene.GetComponent<Transform>(entity1);
+                Particle* e1Particle = m_scene.GetComponent<Particle>(entity1);
+                RigidBody* e1RigidBody = m_scene.GetComponent<RigidBody>(entity1);
+                Transform* e2Transform = m_scene.GetComponent<Transform>(entity2);
+                Particle* e2Particle = m_scene.GetComponent<Particle>(entity2);
+                RigidBody* e2RigidBody = m_scene.GetComponent<RigidBody>(entity2);
 
-                Vector3 angVelocityA = Vector3::Cross(e1RigidBody->AngularVelocity, relativeA);
-                Vector3 angVelocityB = Vector3::Cross(e2RigidBody->AngularVelocity, relativeB);
+                // Compute combined inverse mass
+                float totalInvMass = e1Particle->InverseMass + e2Particle->InverseMass;
 
-                Vector3 fullVelocityA = e1Particle->LinearVelocity + angVelocityA;
-                Vector3 fullVelocityB = e2Particle->LinearVelocity + angVelocityB;
-                Vector3 contactVelocity = fullVelocityB - fullVelocityA;
-
-                float impulseForce = Vector3::Dot(contactVelocity, info.collisionNormal);
-                if (impulseForce > 0.0f) continue; // Skip if objects are separating
-
-                Vector3 inertiaA = Vector3::Cross(e1RigidBody->InverseInertiaTensor * Vector3::Cross(relativeA, info.collisionNormal), relativeA);
-                Vector3 inertiaB = Vector3::Cross(e2RigidBody->InverseInertiaTensor * Vector3::Cross(relativeB, info.collisionNormal), relativeB);
-                float angularEffect = Vector3::Dot(inertiaA + inertiaB, info.collisionNormal);
-
-                float restitution = e1Particle->Restitution * e2Particle->Restitution;
-                j = (- (1.0f + restitution) * impulseForce) / (totalMass + angularEffect);
-
-                Vector3 fullImpulse = info.collisionNormal * j;
-
-                e1Particle->ApplyLinearImpulse(-fullImpulse);
-                e2Particle->ApplyLinearImpulse(fullImpulse);
-
-                e1RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeA, -fullImpulse));
-                e2RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeB, fullImpulse));
-
-                //break;
-            }
-
-            // friction impulses
-            for (const Vector3& contactPoint : info.contactPoints)
-            {
-                Vector3 relativeA = contactPoint - e1Transform->Position;
-                Vector3 relativeB = contactPoint - e2Transform->Position;
-
-                Vector3 angVelocityA = Vector3::Cross(e1RigidBody->AngularVelocity, relativeA);
-                Vector3 angVelocityB = Vector3::Cross(e2RigidBody->AngularVelocity, relativeB);
-
-                Vector3 fullVelocityA = e1Particle->LinearVelocity + angVelocityA;
-                Vector3 fullVelocityB = e2Particle->LinearVelocity + angVelocityB;
-                Vector3 contactVelocity = fullVelocityB - fullVelocityA;
-
-                Vector3 tangent = contactVelocity - info.collisionNormal * Vector3::Dot(contactVelocity, info.collisionNormal);
-                if (tangent.magnitude() < 1e-6) { continue; }
-
-                tangent.normalize();
-
-                float impulseForce = Vector3::Dot(contactVelocity, tangent);
-                //if (impulseForce > 0.0f) continue; // Skip if objects are separating
-
-                Vector3 inertiaA = Vector3::Cross(e1RigidBody->InverseInertiaTensor * Vector3::Cross(relativeA, tangent), relativeA);
-                Vector3 inertiaB = Vector3::Cross(e2RigidBody->InverseInertiaTensor * Vector3::Cross(relativeB, tangent), relativeB);
-                float angularEffect = Vector3::Dot(inertiaA + inertiaB, tangent);
-
-                float jt = -impulseForce / (totalMass + angularEffect);
-
-                // temporary friction values
-                // to calculate properly - add frictions from both bodies and average them
-                float sf = 0.6f; // static friction
-                float df = 0.3f; // dynamic friction
-
-                Vector3 fullImpulseFriction;
-
-                if (fabsf(jt) <= j * sf)
+                // ----- Normal Impulse Resolution -----
+                for (const Vector3& contactPoint : manifold.contactPoints)
                 {
-                    fullImpulseFriction = tangent * jt;
-                }
-                else
-                {
-                    fullImpulseFriction = tangent * -j * df;
+                    // Compute relative positions from centers-of-mass
+                    Vector3 relativeA = contactPoint - e1Transform->Position;
+                    Vector3 relativeB = contactPoint - e2Transform->Position;
+
+                    // Compute velocities at contact points (linear + angular)
+                    Vector3 velA = e1Particle->LinearVelocity +
+                        Vector3::Cross(e1RigidBody->AngularVelocity, relativeA);
+                    Vector3 velB = e2Particle->LinearVelocity +
+                        Vector3::Cross(e2RigidBody->AngularVelocity, relativeB);
+                    Vector3 contactVelocity = velB - velA;
+
+                    // Compute relative velocity along collision normal
+                    float velAlongNormal = Vector3::Dot(contactVelocity, manifold.collisionNormal);
+                    if (velAlongNormal > 0.0f)
+                        continue; // Skip if objects are separating
+
+                    // Compute angular contribution (see, e.g., Erin Catto's method)
+                    Vector3 rAcn = Vector3::Cross(relativeA, manifold.collisionNormal);
+                    Vector3 rBcn = Vector3::Cross(relativeB, manifold.collisionNormal);
+                    Vector3 angInertiaA = Vector3::Cross(e1RigidBody->InverseInertiaTensor * rAcn, relativeA);
+                    Vector3 angInertiaB = Vector3::Cross(e2RigidBody->InverseInertiaTensor * rBcn, relativeB);
+                    float angularEffect = Vector3::Dot(angInertiaA + angInertiaB, manifold.collisionNormal);
+
+                    // Compute restitution (using product of individual restitutions)
+                    float restitution = e1Particle->Restitution * e2Particle->Restitution;
+
+                    // Compute the impulse scalar
+                    float j = -(1.0f + restitution) * velAlongNormal /
+                        (totalInvMass + angularEffect);
+
+                    // Compute impulse vector
+                    Vector3 impulse = manifold.collisionNormal * j;
+
+                    // Apply linear impulses
+                    e1Particle->ApplyLinearImpulse(-impulse);
+                    e2Particle->ApplyLinearImpulse(impulse);
+
+                    // Apply angular impulses
+                    e1RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeA, -impulse));
+                    e2RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeB, impulse));
                 }
 
-                e1Particle->ApplyLinearImpulse(-fullImpulseFriction);
-                e2Particle->ApplyLinearImpulse(fullImpulseFriction);
+                // ----- Friction Impulse Resolution -----
+                for (const Vector3& contactPoint : manifold.contactPoints)
+                {
+                    Vector3 relativeA = contactPoint - e1Transform->Position;
+                    Vector3 relativeB = contactPoint - e2Transform->Position;
 
-                e1RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeA, -fullImpulseFriction));
-                e2RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeB, fullImpulseFriction));
+                    Vector3 velA = e1Particle->LinearVelocity +
+                        Vector3::Cross(e1RigidBody->AngularVelocity, relativeA);
+                    Vector3 velB = e2Particle->LinearVelocity +
+                        Vector3::Cross(e2RigidBody->AngularVelocity, relativeB);
+                    Vector3 contactVelocity = velB - velA;
+
+                    // Remove normal component to get the tangential (friction) velocity
+                    Vector3 tangent = contactVelocity - manifold.collisionNormal *
+                        Vector3::Dot(contactVelocity, manifold.collisionNormal);
+                    if (tangent.magnitude() < 1e-6f)
+                        continue;
+                    tangent.normalize();
+
+                    // Compute impulse scalar along the tangent
+                    float jt = -Vector3::Dot(contactVelocity, tangent);
+
+                    Vector3 rAct = Vector3::Cross(relativeA, tangent);
+                    Vector3 rBct = Vector3::Cross(relativeB, tangent);
+                    Vector3 angInertiaA = Vector3::Cross(e1RigidBody->InverseInertiaTensor * rAct, relativeA);
+                    Vector3 angInertiaB = Vector3::Cross(e2RigidBody->InverseInertiaTensor * rBct, relativeB);
+                    float angularEffect = Vector3::Dot(angInertiaA + angInertiaB, tangent);
+
+                    jt = jt / (totalInvMass + angularEffect);
+
+                    // Friction coefficients (you could average these from the two bodies)
+                    float staticFriction = 0.6f;
+                    float dynamicFriction = 0.3f;
+
+                    // Here we choose between static and dynamic friction.
+                    // (In a complete solver, you might compare jt against the normal impulse magnitude.)
+                    Vector3 frictionImpulse = tangent * jt * dynamicFriction;
+
+                    // Apply friction impulses
+                    e1Particle->ApplyLinearImpulse(-frictionImpulse);
+                    e2Particle->ApplyLinearImpulse(frictionImpulse);
+
+                    e1RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeA, -frictionImpulse));
+                    e2RigidBody->ApplyAngularImpuse(Vector3::Cross(relativeB, frictionImpulse));
+                }
+            } // end collision loop
+        } // end velocity iterations
+
+        // 3. Iteratively correct positions to remove any remaining penetration
+        const int positionIterations = 5;
+        for (int iter = 0; iter < positionIterations; ++iter)
+        {
+            for (auto& collision : collisions)
+            {
+                Entity entity1, entity2;
+                CollisionManifold manifold;
+                std::tie(entity1, entity2, manifold) = collision;
+
+                Transform* e1Transform = m_scene.GetComponent<Transform>(entity1);
+                Particle* e1Particle = m_scene.GetComponent<Particle>(entity1);
+                Transform* e2Transform = m_scene.GetComponent<Transform>(entity2);
+                Particle* e2Particle = m_scene.GetComponent<Particle>(entity2);
+
+                // Total inverse mass (avoid division by zero for static objects)
+                float totalInvMass = e1Particle->InverseMass + e2Particle->InverseMass;
+                if (totalInvMass == 0)
+                    continue;
+
+                // Positional correction parameters
+                const float percent = 0.2f;  // usually between 0.2 and 0.8
+                const float slop = 0.01f; // allowed penetration before correction
+
+                // Only correct penetration beyond the slop threshold
+                float penetration = (manifold.penetrationDepth - slop) > 0.0f ? (manifold.penetrationDepth - slop) : 0.0f;
+                Vector3 correction = manifold.collisionNormal * (penetration * percent / totalInvMass);
+
+                e1Transform->Position -= correction * e1Particle->InverseMass;
+                e2Transform->Position += correction * e2Particle->InverseMass;
             }
         }
 
@@ -1035,27 +1029,27 @@ void DX11App::Draw()
     MeshData cubeMeshData = MeshLoader::GetMesh("Cube");
     MeshData sphereMeshData = MeshLoader::GetMesh("Sphere");
 
-    for (const Node& node : m_aabbTree.GetNodes())
-    {
-        if (node.isLeaf)// m_aabbTree.GetNode(node.child1).isLeaf || m_aabbTree.GetNode(node.child2).isLeaf)
-        {
-            Vector3 boxPos = node.box.getPosition();
-            Vector3 boxSize = node.box.getSize();
+    //for (const Node& node : m_aabbTree.GetNodes())
+    //{
+    //    if (node.isLeaf)// m_aabbTree.GetNode(node.child1).isLeaf || m_aabbTree.GetNode(node.child2).isLeaf)
+    //    {
+    //        Vector3 boxPos = node.box.getPosition();
+    //        Vector3 boxSize = node.box.getSize();
 
-            XMMATRIX transform = XMMatrixScaling(boxSize.x, boxSize.y, boxSize.z) * XMMatrixTranslation(boxPos.x, boxPos.y, boxPos.z);
+    //        XMMATRIX transform = XMMatrixScaling(boxSize.x, boxSize.y, boxSize.z) * XMMatrixTranslation(boxPos.x, boxPos.y, boxPos.z);
 
-            transformData.World = XMMatrixTranspose(transform);
-            sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
+    //        transformData.World = XMMatrixTranspose(transform);
+    //        sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
 
-            UINT stride = cubeMeshData.VBStride;
-            UINT offset = cubeMeshData.VBOffset;
+    //        UINT stride = cubeMeshData.VBStride;
+    //        UINT offset = cubeMeshData.VBOffset;
 
-            m_immediateContext->IASetVertexBuffers(0, 1, &cubeMeshData.VertexBuffer, &stride, &offset);
-            m_immediateContext->IASetIndexBuffer(cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+    //        m_immediateContext->IASetVertexBuffers(0, 1, &cubeMeshData.VertexBuffer, &stride, &offset);
+    //        m_immediateContext->IASetIndexBuffer(cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
-            m_immediateContext->DrawIndexed(cubeMeshData.IndexCount, 0, 0);
-        }
-    }
+    //        m_immediateContext->DrawIndexed(cubeMeshData.IndexCount, 0, 0);
+    //    }
+    //}
 
     for (const Vector3& point : m_debugPoints)
     {

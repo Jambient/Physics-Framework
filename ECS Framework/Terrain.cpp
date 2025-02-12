@@ -75,7 +75,7 @@ bool Terrain::Init(ID3D11Device* device, ID3D11DeviceContext* context, const std
 
 void Terrain::BuildCollision(ECSScene* scene, AABBTree* tree)
 {
-	for (int i = 0; i < 3; i += 3)
+	for (int i = 0; i < 3 * 2000; i += 3)
 	{
 		SimpleVertex v1 = m_vertices[m_indices[i]];
 		SimpleVertex v2 = m_vertices[m_indices[i + 1]];
@@ -108,7 +108,7 @@ void Terrain::BuildCollision(ECSScene* scene, AABBTree* tree)
 			Collider{ HalfSpaceTriangle(p1, p2, p3, normal) }
 		);
 
-		tree->InsertEntity(entity, AABB::FromTriangle(p1, p2, p3));
+		tree->InsertEntity(entity, AABB::FromTriangle(p1, p2, p3), true);
 	}
 }
 
