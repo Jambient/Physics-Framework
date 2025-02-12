@@ -70,7 +70,7 @@ public:
 		// pitch (y-axis rotation)
 		float sinp = 2 * (normQ.r * normQ.j - normQ.k * normQ.i);
 		if (fabs(sinp) >= 1)
-			angles.y = copysign(M_PI / 2, sinp); // Use 90 degrees if out of range
+			angles.y = copysignf(M_PI / 2.0f, sinp); // Use 90 degrees if out of range
 		else
 			angles.y = asinf(sinp);
 
@@ -302,29 +302,29 @@ public:
 	static Quaternion FromEulerAngles(const Vector3& angles)
 	{
 		Quaternion q;
-		double roll = angles.x;
-		double pitch = angles.y;
-		double yaw = angles.z;
+		float roll = angles.x;
+		float pitch = angles.y;
+		float yaw = angles.z;
 
-		double cyaw, cpitch, croll, syaw, spitch, sroll;
-		double cyawcpitch, syawspitch, cyawspitch, syawcpitch;
+		float cyaw, cpitch, croll, syaw, spitch, sroll;
+		float cyawcpitch, syawspitch, cyawspitch, syawcpitch;
 
-		cyaw = cos(0.5f * yaw);
-		cpitch = cos(0.5f * pitch);
-		croll = cos(0.5f * roll);
-		syaw = sin(0.5f * yaw);
-		spitch = sin(0.5f * pitch);
-		sroll = sin(0.5f * roll);
+		cyaw = cosf(0.5f * yaw);
+		cpitch = cosf(0.5f * pitch);
+		croll = cosf(0.5f * roll);
+		syaw = sinf(0.5f * yaw);
+		spitch = sinf(0.5f * pitch);
+		sroll = sinf(0.5f * roll);
 
 		cyawcpitch = cyaw * cpitch;
 		syawspitch = syaw * spitch;
 		cyawspitch = cyaw * spitch;
 		syawcpitch = syaw * cpitch;
 
-		q.r = (float)(cyawcpitch * croll + syawspitch * sroll);
-		q.i = (float)(cyawcpitch * sroll - syawspitch * croll);
-		q.j = (float)(cyawspitch * croll + syawcpitch * sroll);
-		q.k = (float)(syawcpitch * croll - cyawspitch * sroll);
+		q.r = cyawcpitch * croll + syawspitch * sroll;
+		q.i = cyawcpitch * sroll - syawspitch * croll;
+		q.j = cyawspitch * croll + syawcpitch * sroll;
+		q.k = syawcpitch * croll - cyawspitch * sroll;
 
 		return q;
 	}

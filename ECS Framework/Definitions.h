@@ -12,4 +12,4 @@ constexpr ComponentType INVALID_COMPONENT_TYPE = -1;
 
 using Signature = std::bitset<MAX_COMPONENT_TYPES>;
 
-#define FPS60 1.0 / 60.0
+#define FPS60 1.0f / 60.0f

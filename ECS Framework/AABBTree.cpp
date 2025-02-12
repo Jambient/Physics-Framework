@@ -394,7 +394,7 @@ void AABBTree::DeallocateNode(int index)
 	{
 		// Replace removed element with the last one
 		m_nodes[removedDenseIndex] = m_nodes[lastDenseIndex];
-		int lastNodeIndex = m_denseToNodeIndex[lastDenseIndex];
+		size_t lastNodeIndex = m_denseToNodeIndex[lastDenseIndex];
 
 		// Update mappings
 		m_nodeToDenseIndex[lastNodeIndex] = removedDenseIndex;
@@ -411,7 +411,7 @@ void AABBTree::DeallocateNode(int index)
 
 int AABBTree::PickBest(const AABB& leafBox)
 {
-	int leafBoxArea = leafBox.area();
+	float leafBoxArea = leafBox.area();
 	int bestSibling = m_rootIndex;
 	float bestCost = AABB::Union(GetNode(m_rootIndex).box, leafBox).area();
 
@@ -440,7 +440,7 @@ int AABBTree::PickBest(const AABB& leafBox)
 		costCache[current.index] = AABB::Union(leafBox, currentNode.box).area() - currentNode.box.area() + parentCost;
 
 		// calculate the lower bound cost
-		int subTreeLowerBoundCost = leafBoxArea + costCache[current.index];
+		float subTreeLowerBoundCost = leafBoxArea + costCache[current.index];
 
 		if (subTreeLowerBoundCost < bestCost)
 		{

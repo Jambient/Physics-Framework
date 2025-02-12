@@ -71,7 +71,7 @@ void OBJLoader::ComputeTangents(SimpleVertex* vertices, unsigned int numVertices
 	XMFLOAT3* tan2 = tan1 + numVertices;
 	ZeroMemory(tan1, numVertices * sizeof(XMFLOAT3) * 2);
 
-	for (int i = 0; i < numIndices; i += 3)
+	for (unsigned int i = 0; i < numIndices; i += 3)
 	{
 		unsigned short i1 = indices[i];
 		unsigned short i2 = indices[i + 1];
@@ -116,7 +116,7 @@ void OBJLoader::ComputeTangents(SimpleVertex* vertices, unsigned int numVertices
 		XMStoreFloat3(&tan2[i3], XMVectorAdd(XMLoadFloat3(&tan2[i3]), tdir));
 	}
 
-	for (int i = 0; i < numVertices; i++)
+	for (unsigned int i = 0; i < numVertices; i++)
 	{
 		XMVECTOR normal = XMLoadFloat3(&vertices[i].Normal);
 		XMVECTOR tangent = XMLoadFloat3(&tan1[i]);

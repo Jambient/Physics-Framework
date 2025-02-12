@@ -29,8 +29,8 @@ private:
 	std::vector<SimpleVertex> m_vertices;
 	std::vector<UINT> m_indices;
 
-	void createGrid(int terrainWidth, int terrainDepth, int fileWidth, int fileHeight);
-	bool loadHeightMap(const std::string& filePath, int fileWidth, int fileHeight, int terrainScale);
+	void createGrid(unsigned int terrainWidth, unsigned int terrainDepth, unsigned int fileWidth, unsigned int fileHeight);
+	bool loadHeightMap(const std::string& filePath, unsigned int fileWidth, unsigned int fileHeight, int terrainScale);
 
 	float getHeightAt(int x, int y);
 	void setHeightAt(int x, int y, float height);

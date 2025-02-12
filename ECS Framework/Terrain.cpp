@@ -137,7 +137,7 @@ void Terrain::Draw(ID3D11DeviceContext* context)
 	context->DrawIndexed(m_indices.size(), 0, 0);
 }
 
-void Terrain::createGrid(int terrainWidth, int terrainDepth, int fileWidth, int fileHeight)
+void Terrain::createGrid(unsigned int terrainWidth, unsigned int terrainDepth, unsigned int fileWidth, unsigned int fileHeight)
 {
 	// create the vertices
 	float halfWidth = 0.5f * terrainWidth;
@@ -203,9 +203,9 @@ void Terrain::createGrid(int terrainWidth, int terrainDepth, int fileWidth, int 
 	}
 }
 
-bool Terrain::loadHeightMap(const std::string& filePath, int fileWidth, int fileHeight, int heightScale)
+bool Terrain::loadHeightMap(const std::string& filePath, unsigned int fileWidth, unsigned int fileHeight, int heightScale)
 {
-	int imageSize = fileWidth * fileHeight;
+	unsigned int imageSize = fileWidth * fileHeight;
 	std::vector<unsigned char> in(imageSize);
 
 	std::ifstream inFile;

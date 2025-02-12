@@ -326,7 +326,7 @@ HRESULT DX11App::Init()
         entities[2],
         Mesh{ MeshLoader::GetMeshID("Cube") }
     );
-    m_aabbTree.InsertEntity(entities[2], AABB::FromPositionScale(Vector3(0.0f, 3.1, 5.6f), Vector3(10.0f, 5.0f, 1.0f)), true);
+    m_aabbTree.InsertEntity(entities[2], AABB::FromPositionScale(Vector3(0.0f, 3.1f, 5.6f), Vector3(10.0f, 5.0f, 1.0f)), true);
 
     // cube
     //m_scene.AddComponent(

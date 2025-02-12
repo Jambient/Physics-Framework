@@ -44,15 +44,15 @@ std::vector<Vector3> clipPolygonAgainstPlane(const std::vector<Vector3>& polygon
         const Vector3& curr = polygon[i];
         const Vector3& prev = polygon[(i + count - 1) % count];
 
-        double currDist = Vector3::Dot(curr - pPlane, nPlane);
-        double prevDist = Vector3::Dot(prev - pPlane, nPlane);
+        float currDist = Vector3::Dot(curr - pPlane, nPlane);
+        float prevDist = Vector3::Dot(prev - pPlane, nPlane);
 
         // If current point is inside (or on) the plane, add it.
         if (currDist >= 0)
         {
             // If previous point was outside, add the intersection first.
             if (prevDist < 0) {
-                double t = prevDist / (prevDist - currDist);
+                float t = prevDist / (prevDist - currDist);
                 Vector3 intersect = prev + (curr - prev) * t;
                 clipped.push_back(intersect);
             }
@@ -60,7 +60,7 @@ std::vector<Vector3> clipPolygonAgainstPlane(const std::vector<Vector3>& polygon
         }
         // Else, if current is outside but previous was inside, add intersection.
         else if (prevDist >= 0) {
-            double t = prevDist / (prevDist - currDist);
+            float t = prevDist / (prevDist - currDist);
             Vector3 intersect = prev + (curr - prev) * t;
             clipped.push_back(intersect);
         }
@@ -70,7 +70,7 @@ std::vector<Vector3> clipPolygonAgainstPlane(const std::vector<Vector3>& polygon
 }
 
 void CreateCollisionManifold(const OBB& obbA, const OBB& obbB,
-    const Vector3& collisionNormal, double penetration,
+    const Vector3& collisionNormal, float penetration,
     CollisionManifold& manifold)
 {
     // Step 1. Choose a reference and an incident box.
@@ -110,7 +110,7 @@ void CreateCollisionManifold(const OBB& obbA, const OBB& obbB,
 
     // Compute the reference face center.
     // (For the chosen face, move from the box center along the face normal by the corresponding half extent.)
-    double refExtent = (useAAsReference ?
+    float refExtent = (useAAsReference ?
         (refFaceA == 0 ? refBox.halfExtents.x :
             refFaceA == 1 ? refBox.halfExtents.y : refBox.halfExtents.z) :
         (refFaceB == 0 ? refBox.halfExtents.x :
@@ -126,8 +126,8 @@ void CreateCollisionManifold(const OBB& obbA, const OBB& obbB,
     Vector3 sideNormal2 = refBox.axes[sideAxis2];
 
     // Get the half extents for the reference face in these directions.
-    double extent1 = (sideAxis1 == 0 ? refBox.halfExtents.x : (sideAxis1 == 1 ? refBox.halfExtents.y : refBox.halfExtents.z));
-    double extent2 = (sideAxis2 == 0 ? refBox.halfExtents.x : (sideAxis2 == 1 ? refBox.halfExtents.y : refBox.halfExtents.z));
+    float extent1 = (sideAxis1 == 0 ? refBox.halfExtents.x : (sideAxis1 == 1 ? refBox.halfExtents.y : refBox.halfExtents.z));
+    float extent2 = (sideAxis2 == 0 ? refBox.halfExtents.x : (sideAxis2 == 1 ? refBox.halfExtents.y : refBox.halfExtents.z));
 
     // Define four clipping planes for the reference face.
     // Each plane is defined by a point and an outward normal (pointing inside the reference face region).
@@ -207,9 +207,9 @@ void CreateCollisionManifold(const OBB& obbA, const OBB& obbB,
     manifold.collisionNormal = collisionNormal;   // Use the collision normal provided.
     manifold.penetrationDepth = penetration;    // Use the penetration provided.
     manifold.contactPoints.clear();
-    const double kEpsilon = 1e-6;
+    const float kEpsilon = 1e-6;
     for (const Vector3& p : clippedPolygon) {
-        double separation = Vector3::Dot(p - refPlane.point, refPlane.normal);
+        float separation = Vector3::Dot(p - refPlane.point, refPlane.normal);
         // Only add contact points that are within the penetration tolerance.
         if (separation <= kEpsilon) {
             // Optionally, you can project the contact point onto the reference plane.
@@ -533,53 +533,6 @@ CollisionManifold HandleHSTriSphereCollision(const ColliderBase& a, const Collid
     }
 
     return manifold;
-
-    //// Triangle properties
-    //const Vector3& A = triangleA.point1;
-    //const Vector3& B = triangleA.point2;
-    //const Vector3& C = triangleA.point3;
-    //const Vector3& normal = triangleA.normal;  // Assumed to be unit length
-    //float planeD = Vector3::Dot(normal, A);         // Plane equation: dot(N, P) = D
-
-    //// Sphere properties
-    //const Vector3& sphereCenter = sphereB.center;
-    //float sphereRadius = sphereB.radius;
-
-    //// Compute signed distance from sphere center to triangle plane
-    //float distance = Vector3::Dot(normal, sphereCenter) - planeD;
-
-    //// If the sphere is too far from the plane, no collision
-    //if (std::abs(distance) > sphereRadius)
-    //    return manifold;
-
-    //// Compute the collision/contact point on the plane
-    //Vector3 closestPoint = sphereCenter - normal * distance;
-
-    //// Check if the closest point is inside the triangle
-    //Vector3 edge0 = B - A;
-    //Vector3 edge1 = C - B;
-    //Vector3 edge2 = A - C;
-
-    //Vector3 C0 = closestPoint - A;
-    //Vector3 C1 = closestPoint - B;
-    //Vector3 C2 = closestPoint - C;
-
-    //// Edge cross product tests to check if the point is inside
-    //if (Vector3::Dot(normal, Vector3::Cross(edge0, C0)) < 0.0f ||
-    //    Vector3::Dot(normal, Vector3::Cross(edge1, C1)) < 0.0f ||
-    //    Vector3::Dot(normal, Vector3::Cross(edge2, C2)) < 0.0f)
-    //{
-    //    // The point is outside the triangle, no collision
-    //    return manifold;
-    //}
-
-    //// Collision detected, construct manifold
-    //manifold.isColliding = true;
-    //manifold.contactPoints.push_back(closestPoint - normal * (sphereRadius - distance));  // Push out to avoid sinking
-    //manifold.collisionNormal = distance < 0.0f ? -normal : normal;  // Ensure normal points outward
-    //manifold.penetrationDepth = sphereRadius - std::abs(distance);
-
-    //return manifold;
 }
 
 CollisionManifold Collision::Collide(const ColliderBase& c1, const ColliderBase& c2)
