@@ -11,6 +11,7 @@
 #include "TypeIDGenerator.h"
 #include <iostream>
 #include <utility>
+#include <bit>
 
 struct ComponentData
 {
@@ -71,7 +72,7 @@ struct Column
 		assert(index < GetCount() && "Index out of bounds!");
 
 		char* data = m_elements.data() + index * m_elementSize;
-		return (T*)data;
+		return std::bit_cast<T*>(data);
 	}
 
 	size_t GetCount() const
