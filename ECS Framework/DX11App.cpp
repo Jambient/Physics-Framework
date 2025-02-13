@@ -432,7 +432,7 @@ HRESULT DX11App::Init()
     constexpr float rows = 30;
     constexpr float cols = 30;
     float spacing = 0.15f;
-    float springStiffness = 0.98f;
+    float springStiffness = 3.0f;
     constexpr unsigned int pointCount = rows * cols;
 
     std::array<Entity, pointCount> clothEntities = {};
@@ -634,7 +634,10 @@ void DX11App::Update()
             CollisionManifold info = Collision::Collide(e1Collider, e2Collider);
             if (!info) { continue; } // Skip if narrow-phase fails
 
-            m_debugPoints.insert(m_debugPoints.end(), info.contactPoints.begin(), info.contactPoints.end());
+            if (m_showDebugPoints)
+            {
+                m_debugPoints.insert(m_debugPoints.end(), info.contactPoints.begin(), info.contactPoints.end());
+            }
 
             collisions.emplace_back(entity1, entity2, info);
         }
@@ -1062,19 +1065,22 @@ void DX11App::Draw()
     //    }
     //}
 
-    for (const Vector3& point : m_debugPoints)
+    if (m_showDebugPoints)
     {
-        XMMATRIX transform = XMMatrixScaling(0.1f, 0.1f, 0.1f) * XMMatrixTranslation(point.x, point.y, point.z);
-        transformData.World = XMMatrixTranspose(transform);
-        sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
+        for (const Vector3& point : m_debugPoints)
+        {
+            XMMATRIX transform = XMMatrixScaling(0.1f, 0.1f, 0.1f) * XMMatrixTranslation(point.x, point.y, point.z);
+            transformData.World = XMMatrixTranspose(transform);
+            sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
 
-        UINT stride = sphereMeshData.VBStride;
-        UINT offset = sphereMeshData.VBOffset;
+            UINT stride = sphereMeshData.VBStride;
+            UINT offset = sphereMeshData.VBOffset;
 
-        m_immediateContext->IASetVertexBuffers(0, 1, &sphereMeshData.VertexBuffer, &stride, &offset);
-        m_immediateContext->IASetIndexBuffer(sphereMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+            m_immediateContext->IASetVertexBuffers(0, 1, &sphereMeshData.VertexBuffer, &stride, &offset);
+            m_immediateContext->IASetIndexBuffer(sphereMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
-        m_immediateContext->DrawIndexed(sphereMeshData.IndexCount, 0, 0);
+            m_immediateContext->DrawIndexed(sphereMeshData.IndexCount, 0, 0);
+        }
     }
 
     // draw springs

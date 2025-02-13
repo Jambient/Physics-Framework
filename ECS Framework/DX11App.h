@@ -93,6 +93,7 @@ private:
 	ID3D11ShaderResourceView* m_skyboxSRV;
 
 	std::vector<Vector3> m_debugPoints;
+	bool m_showDebugPoints = false;
 
 	ClickAction m_currentClickAction;
 
