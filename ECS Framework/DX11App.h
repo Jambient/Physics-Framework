@@ -78,11 +78,6 @@ private:
 	double m_physicsAccumulator = 0.0;
 	Timer m_timer;
 
-	ID3D11Buffer* m_instanceBuffer;
-
-	// rendering variables
-	std::vector<InstanceData> m_instanceData;
-
 	// default rendering states
 	ID3D11RasterizerState* m_defaultRasterizerState;
 	ID3D11SamplerState* m_defaultSamplerState;

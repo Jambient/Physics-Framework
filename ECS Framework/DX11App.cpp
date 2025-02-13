@@ -521,20 +521,6 @@ HRESULT DX11App::Init()
     m_terrain->Init(m_device, m_immediateContext, "Textures/HeightMaps/TestHeightMap.raw", 100, 100, 150, 150, 10);
     m_terrain->BuildCollision(&m_scene, &m_aabbTree);
 
-    m_instanceData.resize(MAX_ENTITIES);
-
-    // create instance buffer
-    D3D11_BUFFER_DESC instanceBufferDesc = {};
-    instanceBufferDesc.Usage = D3D11_USAGE_DYNAMIC; // Allows updating the buffer
-    instanceBufferDesc.ByteWidth = sizeof(InstanceData) * MAX_ENTITIES;
-    instanceBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    instanceBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-
-    D3D11_SUBRESOURCE_DATA instanceDataResource = {};
-    instanceDataResource.pSysMem = m_instanceData.data();
-
-    m_device->CreateBuffer(&instanceBufferDesc, &instanceDataResource, &m_instanceBuffer);
-
     // initialise ImGui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -808,24 +794,6 @@ void DX11App::Update()
         }
     }
 
-    for (Entity entity = 0; entity < MAX_ENTITIES; entity++)
-    {
-        if (m_scene.DoesEntityExist(entity))
-        {
-            m_instanceData[entity].Color = Vector3(0.05f, 0.05f, 0.05f);
-        }
-        else
-        {
-            m_instanceData[entity] = InstanceData();
-        }
-    }
-
-    D3D11_MAPPED_SUBRESOURCE mappedResource;
-    HRESULT hr = m_immediateContext->Map(m_instanceBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-    ThrowIfFailed(hr);
-    memcpy(mappedResource.pData, m_instanceData.data(), sizeof(InstanceData) * MAX_ENTITIES);
-    m_immediateContext->Unmap(m_instanceBuffer, 0);
-
     // start imgui frame
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
@@ -1041,13 +1009,6 @@ void DX11App::Draw()
     m_immediateContext->PSSetSamplers(0, 1, &m_defaultSamplerState);
 
     sm->SetActiveShader("SimpleShaders");
-
-    /*Particle* particle = m_scene.GetComponent<Particle>(0);
-
-    Quaternion qA = Quaternion::AngleAxis(XMConvertToRadians(45.0f), Vector3::Left);
-    Quaternion qB = Quaternion::FromEulerAngles(Vector3(0.0f, XMConvertToRadians(45.0f), 0.0f));
-    Quaternion testQ = Quaternion::Slerp(qA, qB, m_timer.GetElapsedTime() / 10.0);
-    XMMATRIX transform = XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMATRIX(testQ.toRotationMatrix()) * XMMatrixTranslation(particle->Position.x, particle->Position.y, particle->Position.z);*/
 
     m_scene.ForEach<Transform, Mesh>([&](Entity entity, Transform* transform, Mesh* mesh) {
         XMMATRIX matrixTransform = XMMatrixScaling(transform->Scale.x, transform->Scale.y, transform->Scale.z) * XMMATRIX(transform->Rotation.toRotationMatrix()) * XMMatrixTranslation(transform->Position.x, transform->Position.y, transform->Position.z);
