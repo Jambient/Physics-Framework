@@ -231,6 +231,32 @@ CollisionManifold HandlePointPointCollision(const ColliderBase& a, const Collide
     return manifold;
 }
 
+CollisionManifold HandleSpherePointCollision(const ColliderBase& a, const ColliderBase& b)
+{
+    // cast colliders into correct type
+    const Sphere& sphereA = static_cast<const Sphere&>(a);
+    const Point& pointB = static_cast<const Point&>(b);
+
+    CollisionManifold manifold;
+    manifold.isColliding = false;
+
+    Vector3 delta = pointB.position - sphereA.center;
+
+    if (delta.sqrMagnitude() < sphereA.radius * sphereA.radius)
+    {
+        manifold.isColliding = true;
+        float distance = delta.magnitude();
+        manifold.penetrationDepth = sphereA.radius - distance;
+
+        manifold.collisionNormal = delta.normalized();
+
+        Vector3 contactPoint = sphereA.center + manifold.collisionNormal * sphereA.radius;
+        manifold.contactPoints.push_back(contactPoint);
+    }
+
+    return manifold;
+}
+
 CollisionManifold HandleOBBPointCollision(const ColliderBase& a, const ColliderBase& b)
 {
     // cast colliders into correct type
@@ -539,6 +565,30 @@ CollisionManifold HandleHSTriSphereCollision(const ColliderBase& a, const Collid
     return manifold;
 }
 
+CollisionManifold HandleHSTriPointCollision(const ColliderBase& a, const ColliderBase& b)
+{
+    const HalfSpaceTriangle& triangleA = static_cast<const HalfSpaceTriangle&>(a);
+    const Point& pointB = static_cast<const Point&>(b);
+
+    CollisionManifold manifold;
+    manifold.isColliding = false;
+
+    float distance = Vector3::Dot(pointB.position - triangleA.point1, triangleA.normal);
+
+    if (distance >= 0 && distance <= 1e-6f)
+    {
+        // barycentric coordinate check to confirm point is inside triangle
+        Vector3 contactPoint = pointB.position - triangleA.normal * distance;
+
+        manifold.isColliding = true;
+        manifold.collisionNormal = triangleA.normal;
+        manifold.penetrationDepth = distance;
+        manifold.contactPoints.push_back(contactPoint);
+    }
+
+    return manifold;
+}
+
 CollisionManifold Collision::Collide(const ColliderBase& c1, const ColliderBase& c2)
 {
     size_t c1Index = static_cast<size_t>(c1.type);
@@ -573,6 +623,7 @@ void Collision::Init()
         }
     }
 
+    // point vs ...
     Collision::RegisterCollisionHandler(ColliderType::Point, ColliderType::Point, HandlePointPointCollision);
 
     // oriented box vs ...
@@ -582,6 +633,7 @@ void Collision::Init()
 
     // sphere vs ...
     Collision::RegisterCollisionHandler(ColliderType::Sphere, ColliderType::Sphere, HandleSphereSphereCollision);
+    Collision::RegisterCollisionHandler(ColliderType::Sphere, ColliderType::Point, HandleSpherePointCollision);
 
     // aligned box vs ...
     Collision::RegisterCollisionHandler(ColliderType::AlignedBox, ColliderType::AlignedBox, HandleAABBAABBCollision);
@@ -590,4 +642,5 @@ void Collision::Init()
     // half space triangle vs ...
     Collision::RegisterCollisionHandler(ColliderType::HalfSpaceTriangle, ColliderType::HalfSpaceTriangle, HandleHSTriHSTriCollision);
     Collision::RegisterCollisionHandler(ColliderType::HalfSpaceTriangle, ColliderType::Sphere, HandleHSTriSphereCollision);
+    Collision::RegisterCollisionHandler(ColliderType::HalfSpaceTriangle, ColliderType::Point, HandleHSTriPointCollision);
 }

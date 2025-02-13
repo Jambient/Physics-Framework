@@ -79,6 +79,14 @@ public:
 	virtual void OnMouseClick(WPARAM pressedBtn, int x, int y) {};
 
 	/**
+	 * @brief Virtual method hooked onto the windows mouse release callback
+	 * @param pressedBtn The button that was released resulting in the callback
+	 * @param x The x position of the mouse relative to the application
+	 * @param y The y position of the mouse relative to the application
+	 */
+	virtual void OnMouseRelease(WPARAM releasedBtn, int x, int y) {};
+
+	/**
 	 * @brief Virtual method hooked onto the windows mouse wheel callback
 	 * @param wheelDelta The delta offset of the mouse wheel, 120 for forwards, -120 for backwards.
 	 * @param x The x position of the mouse relative to the application

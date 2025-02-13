@@ -25,6 +25,7 @@ enum class ClickAction
 {
 	SELECT,
 	PUSH,
+	DRAG
 };
 
 /**
@@ -57,6 +58,7 @@ public:
 
 	void OnMouseMove(WPARAM btnState, int x, int y) override;
 	void OnMouseClick(WPARAM pressedBtn, int x, int y) override;
+	void OnMouseRelease(WPARAM releasedBtn, int x, int y) override;
 	void OnMouseWheel(WPARAM wheelDelta, int x, int y) override;
 
 private:
@@ -89,6 +91,8 @@ private:
 	ID3D11RasterizerState* m_wireframeRasterizerState;
 
 	Entity m_selectedEntity = INVALID_ENTITY;
+	Entity m_draggingEntity = INVALID_ENTITY;
+	float m_draggingDistance = 0.0f;
 
 	ID3D11ShaderResourceView* m_crateMaterialSRV;
 	ID3D11ShaderResourceView* m_skyboxSRV;

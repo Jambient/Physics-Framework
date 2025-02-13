@@ -34,6 +34,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_LBUTTONDOWN:
 		g_application->OnMouseClick(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 		break;
+	case WM_LBUTTONUP:
+		g_application->OnMouseRelease(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		break;
 	case WM_MOUSEWHEEL:
 		g_application->OnMouseWheel(GET_WHEEL_DELTA_WPARAM(wParam), GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 		break;
