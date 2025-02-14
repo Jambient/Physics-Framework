@@ -13,6 +13,14 @@
 #include "Archetype.h"
 #include "TypeIDGenerator.h"
 
+struct SignatureHash
+{
+	std::size_t operator()(const Signature& sig) const
+	{
+		return sig.to_ullong();
+	}
+};
+
 /**
  * @class ComponentManager
  * @brief Manager class that manages all the components in the engine.
@@ -171,7 +179,7 @@ public:
 
 private:
 	std::array<size_t, MAX_COMPONENT_TYPES> m_componentSizes;
-	std::unordered_map<Signature, std::shared_ptr<Archetype>> m_archetypes;
+	std::unordered_map<Signature, std::shared_ptr<Archetype>, SignatureHash> m_archetypes;
 
 	template <typename T>
 	size_t GetTypeIndex()
