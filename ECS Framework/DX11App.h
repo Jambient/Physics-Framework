@@ -91,9 +91,14 @@ private:
 	std::vector<Vector3> m_debugPoints;
 	bool m_showDebugPoints = true;
 
+	float m_physicsDuration = 0.0f;
+
 	ClickAction m_currentClickAction;
 
 	Terrain* m_terrain;
+
+	UINT maxDebugSprings = 3000;
+	ID3D11Buffer* m_springVertexBuffer;
 
 	/**
 	 * @brief Builds a ray pointing towards the provided position on the screen from the camera's position

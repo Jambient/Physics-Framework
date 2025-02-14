@@ -17,6 +17,7 @@
 #include "ColliderUpdateSystem.h"
 #include "BroadPhaseUpdateSystem.h"
 #include "NarrowPhaseSystem.h"
+#include <chrono>
 
 #define ThrowIfFailed(x)  if (FAILED(x)) { throw new std::bad_exception;}
 
@@ -89,6 +90,17 @@ HRESULT DX11App::Init()
     bilinearSamplerDesc.MinLOD = 0;
 
     hr = m_device->CreateSamplerState(&bilinearSamplerDesc, &m_defaultSamplerState);
+    if (FAILED(hr)) return hr;
+
+    const UINT maxVertices = maxDebugSprings * 2;
+
+    D3D11_BUFFER_DESC vertexBufferDesc = {};
+    vertexBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+    vertexBufferDesc.ByteWidth = sizeof(SimpleVertex) * maxVertices;
+    vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    vertexBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+    hr = m_device->CreateBuffer(&vertexBufferDesc, nullptr, &m_springVertexBuffer);
     if (FAILED(hr)) return hr;
 
     // create skybox depth buffer state
@@ -579,7 +591,11 @@ void DX11App::Update()
     {
         m_physicsAccumulator -= FPS60;
 
+        auto start = std::chrono::high_resolution_clock::now();
         m_scene.UpdateSystems(FPS60);
+        auto stop = std::chrono::high_resolution_clock::now();
+
+        m_physicsDuration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count() / 1000.0f;
     }
 
     // start imgui frame
@@ -749,6 +765,7 @@ void DX11App::Update()
     ImGui::Begin("Application Stats");
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
     ImGui::Text("Entity Count: %d of %d", m_scene.GetEntityCount(), MAX_ENTITIES);
+    ImGui::Text("Physics Computation Time: %.3f ms", m_physicsDuration);
     ImGui::End();
 
     ImGui::Begin("Click Options");
@@ -872,42 +889,31 @@ void DX11App::Draw()
     transformData.World = XMMatrixTranspose(XMMatrixIdentity());
     sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
 
+    std::vector<SimpleVertex> springVertices;
+
     m_scene.ForEach<Spring>([&](Entity entity, Spring* spring) {
 
         Vector3 start = m_scene.GetComponent<Transform>(spring->Entity1)->Position;
         Vector3 end = m_scene.GetComponent<Transform>(spring->Entity2)->Position;
 
-        SimpleVertex lineVertices[] = {
-            { XMFLOAT3(start.x, start.y, start.z), XMFLOAT3(), XMFLOAT2(), XMFLOAT4() },
-            { XMFLOAT3(end.x, end.y, end.z), XMFLOAT3(), XMFLOAT2(), XMFLOAT4() },
-        };
-
-        D3D11_BUFFER_DESC vertexBufferDesc = {};
-        vertexBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-        vertexBufferDesc.ByteWidth = sizeof(lineVertices);
-        vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-        vertexBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-
-        D3D11_SUBRESOURCE_DATA vertexData = {};
-        vertexData.pSysMem = lineVertices;
-
-        ID3D11Buffer* vertexBuffer;
-        HRESULT hr = m_device->CreateBuffer(&vertexBufferDesc, &vertexData, &vertexBuffer);
-        if (FAILED(hr)) return;
-
-        // Set vertex buffer
-        UINT stride = sizeof(SimpleVertex);
-        UINT offset = 0;
-        m_immediateContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
-        m_immediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
-
-        // Draw the line
-        m_immediateContext->Draw(2, 0);
-
-        // Cleanup
-        vertexBuffer->Release();
-
+        springVertices.push_back({ XMFLOAT3(start.x, start.y, start.z), XMFLOAT3(), XMFLOAT2(), XMFLOAT4() });
+        springVertices.push_back({ XMFLOAT3(end.x, end.y, end.z), XMFLOAT3(), XMFLOAT2(), XMFLOAT4() });
     });
+
+    UINT vertexCount = static_cast<UINT>(springVertices.size());
+
+    // Update the dynamic vertex buffer
+    D3D11_MAPPED_SUBRESOURCE mappedResource;
+    m_immediateContext->Map(m_springVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+    memcpy(mappedResource.pData, springVertices.data(), vertexCount * sizeof(SimpleVertex));
+    m_immediateContext->Unmap(m_springVertexBuffer, 0);
+
+    UINT stride = sizeof(SimpleVertex);
+    UINT offset = 0;
+    m_immediateContext->IASetVertexBuffers(0, 1, &m_springVertexBuffer, &stride, &offset);
+    m_immediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+
+    m_immediateContext->Draw(vertexCount, 0);
 
     //////// SKYBOX RENDERING ////////
     ID3D11DepthStencilState* pOldDepthState = nullptr;
@@ -920,8 +926,8 @@ void DX11App::Draw()
 
     sm->SetActiveShader("SkyboxShader");
 
-    UINT stride = skyboxMeshData.VBStride;
-    UINT offset = skyboxMeshData.VBOffset;
+    stride = skyboxMeshData.VBStride;
+    offset = skyboxMeshData.VBOffset;
 
     m_immediateContext->IASetVertexBuffers(0, 1, &skyboxMeshData.VertexBuffer, &stride, &offset);
     m_immediateContext->IASetIndexBuffer(skyboxMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
