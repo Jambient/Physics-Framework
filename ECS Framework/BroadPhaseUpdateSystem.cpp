@@ -12,26 +12,26 @@ void BroadPhaseUpdateSystem::Update(ECSScene& scene, float dt)
 
             if constexpr (std::is_same_v<T, Sphere>)
             {
-                aabbTree.UpdatePosition(entity, specificCollider.center);
-                aabbTree.UpdateScale(entity, Vector3::One * 2.0f * specificCollider.radius);
+                m_aabbTree.UpdatePosition(entity, specificCollider.center);
+                m_aabbTree.UpdateScale(entity, Vector3::One * 2.0f * specificCollider.radius);
             }
             else if constexpr (std::is_same_v<T, OBB>)
             {
                 AABB aabb = specificCollider.toAABB();
-                aabbTree.UpdatePosition(entity, aabb.getPosition());
-                aabbTree.UpdateScale(entity, aabb.getSize());
+                m_aabbTree.UpdatePosition(entity, aabb.getPosition());
+                m_aabbTree.UpdateScale(entity, aabb.getSize());
             }
             else if constexpr (std::is_same_v<T, AABB>)
             {
-                aabbTree.UpdatePosition(entity, specificCollider.getPosition());
-                aabbTree.UpdateScale(entity, specificCollider.getSize());
+                m_aabbTree.UpdatePosition(entity, specificCollider.getPosition());
+                m_aabbTree.UpdateScale(entity, specificCollider.getSize());
             }
             else if constexpr (std::is_same_v<T, Point>)
             {
-                aabbTree.UpdatePosition(entity, specificCollider.position);
+                m_aabbTree.UpdatePosition(entity, specificCollider.position);
             }
             }, collider->Collider);
 
-        aabbTree.TriggerUpdate(entity);
+        m_aabbTree.TriggerUpdate(entity);
         });
 }
