@@ -2,7 +2,7 @@
 #include "Components.h"
 #include "ECSScene.h"
 
-class ColliderUpdateSystem : public System
+class IntegratorSystem : public System
 {
 public:
 	void Update(ECSScene& scene, float dt) final override;

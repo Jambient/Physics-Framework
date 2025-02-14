@@ -5,8 +5,6 @@
 #include "Structures.h"
 #include "Camera.h"
 #include "ECSScene.h"
-#include "PhysicsSystem.h"
-#include "ColliderUpdateSystem.h"
 #include "Timer.h"
 #include "Vector3.h"
 #include "AABBTree.h"
@@ -73,8 +71,6 @@ private:
 
 	AABBTree m_aabbTree;
 	ECSScene m_scene;
-	std::shared_ptr<PhysicsSystem> m_physicsSystem;
-	std::shared_ptr<ColliderUpdateSystem> m_colliderUpdateSystem;
 	double m_physicsAccumulator = 0.0;
 	Timer m_timer;
 
@@ -93,7 +89,7 @@ private:
 	ID3D11ShaderResourceView* m_skyboxSRV;
 
 	std::vector<Vector3> m_debugPoints;
-	bool m_showDebugPoints = false;
+	bool m_showDebugPoints = true;
 
 	ClickAction m_currentClickAction;
 

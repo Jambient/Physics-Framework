@@ -7,58 +7,19 @@
 class SystemManager
 {
 public:
-	template <typename T>
-	std::shared_ptr<T> RegisterSystem()
+	void RegisterSystem(std::unique_ptr<System> system)
 	{
-		const char* typeName = typeid(T).name();
-
-		assert(m_systems.find(typeName) == m_systems.end() && "Registering system more than once.");
-
-		std::shared_ptr<T> system = std::make_shared<T>();
-		m_systems.insert({ typeName, system });
-
-		return system;
+		m_systems.push_back(std::move(system));
 	}
 
-	template <typename T>
-	void SetSignature(Signature signature)
+	void Update(ECSScene& scene, float dt)
 	{
-		const char* typeName = typeid(T).name();
-
-		assert(m_systems.find(typeName) != m_systems.end() && "System used before registered.");
-
-		m_signatures.insert({ typeName, signature });
-	}
-
-	void EntityDestroyed(Entity entity)
-	{
-		for (auto const& pair : m_systems)
+		for (const auto& system : m_systems)
 		{
-			std::shared_ptr<System> system = pair.second;
-			system->m_entities.erase(entity);
-		}
-	}
-
-	void EntitySignatureChanged(Entity entity, Signature newEntitySignature)
-	{
-		for (auto const& pair : m_systems)
-		{
-			const char* type = pair.first;
-			std::shared_ptr<System> system = pair.second;
-			Signature systemSignature = m_signatures[type];
-
-			if ((newEntitySignature & systemSignature) == systemSignature)
-			{
-				system->m_entities.insert(entity);
-			}
-			else
-			{
-				system->m_entities.erase(entity);
-			}
+			system->Update(scene, dt);
 		}
 	}
 
 private:
-	std::unordered_map<const char*, Signature> m_signatures;
-	std::unordered_map<const char*, std::shared_ptr<System>> m_systems;
+	std::vector<std::unique_ptr<System>> m_systems;
 };

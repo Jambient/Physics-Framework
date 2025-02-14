@@ -48,7 +48,6 @@ public:
 	{
 		m_entityManager->DestroyEntity(entity);
 		m_componentManager->EntityDestroyed(entity);
-		m_systemManager->EntityDestroyed(entity);
 	}
 
 	/**
@@ -132,8 +131,6 @@ public:
 
 		Signature newSignature = m_componentManager->AddComponent<T>(entity, oldSignature, component);
 		m_entityManager->SetSignature(entity, newSignature);
-
-		m_systemManager->EntitySignatureChanged(entity, newSignature);
 	}
 
 	/**
@@ -149,8 +146,6 @@ public:
 
 		Signature newSignature = m_componentManager->RemoveComponent<T>(entity, oldSignature);
 		m_entityManager->SetSignature(entity, newSignature);
-
-		m_systemManager->EntitySignatureChanged(entity, newSignature);
 	}
 
 	/**
@@ -178,16 +173,14 @@ public:
 
 	// SYSTEM METHODS
 
-	template <typename T>
-	std::shared_ptr<T> RegisterSystem()
+	void RegisterSystem(std::unique_ptr<System> system)
 	{
-		return m_systemManager->RegisterSystem<T>();
+		m_systemManager->RegisterSystem(std::move(system));
 	}
 
-	template <typename T>
-	void SetSystemSignature(Signature signature)
+	void UpdateSystems(float dt)
 	{
-		m_systemManager->SetSignature<T>(signature);
+		m_systemManager->Update(*this, dt);
 	}
 
 private:

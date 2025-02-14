@@ -135,6 +135,7 @@
   <ItemGroup>
     <ClInclude Include="AABBTree.h" />
     <ClInclude Include="Archetype.h" />
+    <ClInclude Include="BroadPhaseUpdateSystem.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Colliders.h" />
     <ClInclude Include="ColliderUpdateSystem.h" />
@@ -159,8 +160,9 @@
     <ClInclude Include="Matrix3.h" />
     <ClInclude Include="Matrix4.h" />
     <ClInclude Include="MeshLoader.h" />
+    <ClInclude Include="NarrowPhaseSystem.h" />
     <ClInclude Include="OBJLoader.h" />
-    <ClInclude Include="PhysicsSystem.h" />
+    <ClInclude Include="IntegratorSystem.h" />
     <ClInclude Include="Plane.h" />
     <ClInclude Include="Quaternion.h" />
     <ClInclude Include="Ray.h" />
@@ -185,7 +187,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AABBTree.cpp" />
+    <ClCompile Include="BroadPhaseUpdateSystem.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="ColliderUpdateSystem.cpp" />
     <ClCompile Include="Collision.cpp" />
     <ClCompile Include="DDSTextureLoader.cpp" />
     <ClCompile Include="DX11App.cpp" />
@@ -199,9 +203,11 @@
     <ClCompile Include="ImGui\imgui_stdlib.cpp" />
     <ClCompile Include="ImGui\imgui_tables.cpp" />
     <ClCompile Include="ImGui\imgui_widgets.cpp" />
+    <ClCompile Include="IntegratorSystem.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Material.cpp" />
     <ClCompile Include="MeshLoader.cpp" />
+    <ClCompile Include="NarrowPhaseSystem.cpp" />
     <ClCompile Include="OBJLoader.cpp" />
     <ClCompile Include="Ray.cpp" />
     <ClCompile Include="ShaderManager.cpp" />

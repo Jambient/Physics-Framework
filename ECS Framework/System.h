@@ -7,6 +7,5 @@ class ECSScene;
 class System
 {
 public:
-	std::set<Entity> m_entities;
-	ECSScene* m_scene = nullptr;
+	virtual void Update(ECSScene& scene, float dt) = 0;
 };

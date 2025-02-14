@@ -3,6 +3,7 @@
 #include "Quaternion.h"
 #include "Matrix3.h"
 #include "Colliders.h"
+#include "Definitions.h"
 #include <variant>
 
 struct Transform

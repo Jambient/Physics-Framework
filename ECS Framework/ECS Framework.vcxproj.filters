@@ -16,8 +16,11 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{78b1ebe9-49a2-436f-9015-8766020fff52}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\Systems">
+    <Filter Include="Header Files\System Headers">
       <UniqueIdentifier>{a5a5e1b7-9b4c-46ba-ba33-a416d91fdc13}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\System Implementations">
+      <UniqueIdentifier>{3e5d00c7-0771-4c05-bf8d-6b91d523c37b}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -52,7 +55,7 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="System.h">
-      <Filter>Header Files\Systems</Filter>
+      <Filter>Header Files\System Headers</Filter>
     </ClInclude>
     <ClInclude Include="SystemManager.h">
       <Filter>Header Files</Filter>
@@ -63,8 +66,8 @@
     <ClInclude Include="Components.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PhysicsSystem.h">
-      <Filter>Header Files\Systems</Filter>
+    <ClInclude Include="IntegratorSystem.h">
+      <Filter>Header Files\System Headers</Filter>
     </ClInclude>
     <ClInclude Include="Archetype.h">
       <Filter>Header Files</Filter>
@@ -100,7 +103,7 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ColliderUpdateSystem.h">
-      <Filter>Header Files\Systems</Filter>
+      <Filter>Header Files\System Headers</Filter>
     </ClInclude>
     <ClInclude Include="MeshLoader.h">
       <Filter>Header Files</Filter>
@@ -143,6 +146,12 @@
     </ClInclude>
     <ClInclude Include="Terrain.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BroadPhaseUpdateSystem.h">
+      <Filter>Header Files\System Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="NarrowPhaseSystem.h">
+      <Filter>Header Files\System Headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -236,6 +245,18 @@
     </ClCompile>
     <ClCompile Include="Terrain.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="IntegratorSystem.cpp">
+      <Filter>Source Files\System Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="BroadPhaseUpdateSystem.cpp">
+      <Filter>Source Files\System Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="ColliderUpdateSystem.cpp">
+      <Filter>Source Files\System Implementations</Filter>
+    </ClCompile>
+    <ClCompile Include="NarrowPhaseSystem.cpp">
+      <Filter>Source Files\System Implementations</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
