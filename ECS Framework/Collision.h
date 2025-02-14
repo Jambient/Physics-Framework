@@ -4,49 +4,32 @@
 #include <functional>
 #include "Plane.h"
 
-// temporary structs
-struct ContactPoint
+struct CollisionManifold
 {
-	Vector3 localA;
-	Vector3 localB;
 	Vector3 normal;
 	float penetration;
+	std::vector<Vector3> contactPoints;
 };
+
 
 struct CollisionInfo
 {
 	Entity entityA;
 	Entity entityB;
-
-	ContactPoint point;
+	CollisionManifold manifold;
 };
 
-// full manifold derived from collision data
-struct CollisionManifold
-{
-	bool isColliding;
-	Vector3 collisionNormal;
-	float penetrationDepth;
-	std::vector<Vector3> contactPoints;
-
-	// this makes sure this struct can be used in conditionals
-	explicit operator bool() const
-	{
-		return isColliding;
-	}
-};
-
-using CollisionHandler = std::function<CollisionManifold(const ColliderBase&, const ColliderBase&)>;
+using CollisionHandler = std::function<bool(const ColliderBase&, const ColliderBase&, CollisionManifold&)>;
 
 class Collision
 {
 public:
-	static CollisionManifold Collide(const ColliderBase& c1, const ColliderBase& c2);
-
-	static void RegisterCollisionHandler(ColliderType typeA, ColliderType typeB, CollisionHandler handler);
+	static bool Collide(const ColliderBase& c1, const ColliderBase& c2, CollisionManifold& manifoldOut);
 
 	static void Init();
 
 private:
-	static CollisionHandler dispatchTable[ColliderTypeCount][ColliderTypeCount];
+	static void RegisterCollisionHandler(ColliderType typeA, ColliderType typeB, CollisionHandler handler);
+
+	static CollisionHandler m_dispatchTable[ColliderTypeCount][ColliderTypeCount];
 };

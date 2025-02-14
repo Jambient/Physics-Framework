@@ -1,8 +1,8 @@
 #include "Collision.h"
 
-CollisionHandler Collision::dispatchTable[ColliderTypeCount][ColliderTypeCount] = {};
+CollisionHandler Collision::m_dispatchTable[ColliderTypeCount][ColliderTypeCount] = {};
 
-CollisionManifold NoOpCollision(const ColliderBase& a, const ColliderBase& b)
+bool NoOpCollision(const ColliderBase& a, const ColliderBase& b, CollisionManifold& manifold)
 {
     throw std::logic_error("Collision between these shapes is not implemented");
 }
@@ -198,8 +198,8 @@ void CreateCollisionManifold(const OBB& obbA, const OBB& obbB,
         clippedPolygon = clipPolygonAgainstPlane(clippedPolygon, plane.point, plane.normal);
 
     // Step 5. For each vertex in the clipped polygon, compute the penetration relative to the reference face plane.
-    manifold.collisionNormal = collisionNormal;   // Use the collision normal provided.
-    manifold.penetrationDepth = penetration;    // Use the penetration provided.
+    manifold.normal = collisionNormal;   // Use the collision normal provided.
+    manifold.penetration = penetration;    // Use the penetration provided.
     manifold.contactPoints.clear();
     const float kEpsilon = 1e-6;
     for (const Vector3& p : clippedPolygon) {
@@ -217,48 +217,40 @@ void CreateCollisionManifold(const OBB& obbA, const OBB& obbB,
         manifold.contactPoints.resize(4);
 }
 
-CollisionManifold HandlePointPointCollision(const ColliderBase& a, const ColliderBase& b)
-{
-    CollisionManifold manifold;
-    manifold.isColliding = false;
-    
-    return manifold;
+bool HandlePointPointCollision(const ColliderBase& a, const ColliderBase& b, CollisionManifold& manifold)
+{    
+    return false;
 }
 
-CollisionManifold HandleSpherePointCollision(const ColliderBase& a, const ColliderBase& b)
+bool HandleSpherePointCollision(const ColliderBase& a, const ColliderBase& b, CollisionManifold& manifold)
 {
     // cast colliders into correct type
     const Sphere& sphereA = static_cast<const Sphere&>(a);
     const Point& pointB = static_cast<const Point&>(b);
 
-    CollisionManifold manifold;
-    manifold.isColliding = false;
-
     Vector3 delta = pointB.GetPosition() - sphereA.GetCenter();
 
     if (delta.sqrMagnitude() < sphereA.GetRadius() * sphereA.GetRadius())
     {
-        manifold.isColliding = true;
         float distance = delta.magnitude();
-        manifold.penetrationDepth = sphereA.GetRadius() - distance;
 
-        manifold.collisionNormal = delta.normalized();
+        manifold.penetration = sphereA.GetRadius() - distance;
+        manifold.normal = delta.normalized();
 
-        Vector3 contactPoint = sphereA.GetCenter() + manifold.collisionNormal * sphereA.GetRadius();
+        Vector3 contactPoint = sphereA.GetCenter() + manifold.normal * sphereA.GetRadius();
         manifold.contactPoints.push_back(contactPoint);
+
+        return true;
     }
 
-    return manifold;
+    return false;
 }
 
-CollisionManifold HandleOBBPointCollision(const ColliderBase& a, const ColliderBase& b)
+bool HandleOBBPointCollision(const ColliderBase& a, const ColliderBase& b, CollisionManifold& manifold)
 {
     // cast colliders into correct type
     const OBB& boxA = static_cast<const OBB&>(a);
     const Point& pointB = static_cast<const Point&>(b);
-
-    CollisionManifold manifold;
-    manifold.isColliding = false;
 
     // Transform the point to OBB local space
     Vector3 localPoint = boxA.GetRotationMatrix().transpose() * (pointB.GetPosition() - boxA.GetCenter());
@@ -269,7 +261,6 @@ CollisionManifold HandleOBBPointCollision(const ColliderBase& a, const ColliderB
         std::abs(localPoint.y) <= boxHalfExtents.y &&
         std::abs(localPoint.z) <= boxHalfExtents.z) {
 
-        manifold.isColliding = true;
         manifold.contactPoints.push_back(pointB.GetPosition());
 
         // Compute penetration depths along each axis
@@ -281,31 +272,31 @@ CollisionManifold HandleOBBPointCollision(const ColliderBase& a, const ColliderB
 
         // Find the minimum penetration axis (which determines the normal)
         if (penetration.x <= penetration.y && penetration.x <= penetration.z) {
-            manifold.collisionNormal = boxA.GetAxis(0) * (localPoint.x < 0 ? -1.0f : 1.0f);
-            manifold.penetrationDepth = penetration.x;
+            manifold.normal = boxA.GetAxis(0) * (localPoint.x < 0 ? -1.0f : 1.0f);
+            manifold.penetration = penetration.x;
         }
         else if (penetration.y <= penetration.x && penetration.y <= penetration.z) {
-            manifold.collisionNormal = boxA.GetAxis(1) * (localPoint.y < 0 ? -1.0f : 1.0f);
-            manifold.penetrationDepth = penetration.y;
+            manifold.normal = boxA.GetAxis(1) * (localPoint.y < 0 ? -1.0f : 1.0f);
+            manifold.penetration = penetration.y;
         }
         else {
-            manifold.collisionNormal = boxA.GetAxis(2) * (localPoint.z < 0 ? -1.0f : 1.0f);
-            manifold.penetrationDepth = penetration.z;
+            manifold.normal = boxA.GetAxis(2) * (localPoint.z < 0 ? -1.0f : 1.0f);
+            manifold.penetration = penetration.z;
         }
+
+        return true;
     }
 
-    return manifold;
+    return false;
 }
 
-CollisionManifold HandleObbObbCollision(const ColliderBase& a, const ColliderBase& b)
+bool HandleObbObbCollision(const ColliderBase& a, const ColliderBase& b, CollisionManifold& manifold)
 {
     // cast colliders into correct type
     const OBB& boxA = static_cast<const OBB&>(a);
     const OBB& boxB = static_cast<const OBB&>(b);
 
-    CollisionManifold manifold;
-    manifold.isColliding = false;
-    manifold.penetrationDepth = FLT_MAX;
+    manifold.penetration = FLT_MAX;
     
     Vector3 axes[15];
     int axisCount = 0;
@@ -334,7 +325,7 @@ CollisionManifold HandleObbObbCollision(const ColliderBase& a, const ColliderBas
         Vector3 collisionNormal;
         if (!overlapOnAxis(boxA, boxB, axes[i], overlap, collisionNormal)) {
             // Separating axis found, no collision
-            return manifold;
+            return false;
         }
     
         if (overlap < smallestOverlap) {
@@ -343,46 +334,37 @@ CollisionManifold HandleObbObbCollision(const ColliderBase& a, const ColliderBas
         }
     }
 
-    manifold.isColliding = true;
     CreateCollisionManifold(boxA, boxB, bestAxis.normalized(), smallestOverlap, manifold);
-
-    return manifold;
+    return true;
 }
 
-CollisionManifold HandleSphereSphereCollision(const ColliderBase& a, const ColliderBase& b)
+bool HandleSphereSphereCollision(const ColliderBase& a, const ColliderBase& b, CollisionManifold& manifold)
 {
     // cast colliders into correct type
     const Sphere& sphereA = static_cast<const Sphere&>(a);
     const Sphere& sphereB = static_cast<const Sphere&>(b);
 
-    CollisionManifold manifold;
-    manifold.isColliding = false;
-
     float combinedRadii = sphereA.GetRadius() + sphereB.GetRadius();
     Vector3 delta = sphereB.GetCenter() - sphereA.GetCenter();
 
     if (delta.sqrMagnitude() >= combinedRadii * combinedRadii)
-        return manifold;
-    
-    manifold.isColliding = true;
+        return false;
+
     float distance = delta.magnitude();
-    manifold.penetrationDepth = combinedRadii - distance;
+    manifold.penetration = combinedRadii - distance;
 
-    manifold.collisionNormal = delta.normalized();
+    manifold.normal = delta.normalized();
 
-    Vector3 contactPoint = sphereA.GetCenter() + manifold.collisionNormal * sphereA.GetRadius();
+    Vector3 contactPoint = sphereA.GetCenter() + manifold.normal * sphereA.GetRadius();
     manifold.contactPoints.push_back(contactPoint);
-    return manifold;
+    return true;
 }
 
-CollisionManifold HandleOBBSphereCollision(const ColliderBase& a, const ColliderBase& b)
+bool HandleOBBSphereCollision(const ColliderBase& a, const ColliderBase& b, CollisionManifold& manifold)
 {
     // Cast colliders into correct type
     const OBB& boxA = static_cast<const OBB&>(a);
     const Sphere& sphereB = static_cast<const Sphere&>(b);
-
-    CollisionManifold manifold;
-    manifold.isColliding = false;
 
     // Transform sphere center to OBB local space
     Vector3 localSphereCenter = boxA.GetRotationMatrix() * (sphereB.GetCenter() - boxA.GetCenter());
@@ -401,26 +383,23 @@ CollisionManifold HandleOBBSphereCollision(const ColliderBase& a, const Collider
 
     if (distance < sphereB.GetRadius())
     {
-        manifold.isColliding = true;
+        manifold.normal = displacement.normalized();
+        manifold.penetration = sphereB.GetRadius() - distance;
 
-        manifold.collisionNormal = displacement.normalized();
-        manifold.penetrationDepth = sphereB.GetRadius() - distance;
-
-        Vector3 contactPoint = sphereB.GetCenter() - manifold.collisionNormal * sphereB.GetRadius();
+        Vector3 contactPoint = sphereB.GetCenter() - manifold.normal * sphereB.GetRadius();
         manifold.contactPoints.push_back(contactPoint);
+
+        return true;
     }
 
-    return manifold;
+    return false;
 }
 
-CollisionManifold HandleAABBSphereCollision(const ColliderBase& a, const ColliderBase& b)
+bool HandleAABBSphereCollision(const ColliderBase& a, const ColliderBase& b, CollisionManifold& manifold)
 {
     // cast colliders into correct type
     const AABB& boxA = static_cast<const AABB&>(a);
     const Sphere& sphereB = static_cast<const Sphere&>(b);
-
-    CollisionManifold manifold;
-    manifold.isColliding = false;
 
     Vector3 boxSize = boxA.GetSize() * 0.5f;
     Vector3 delta = sphereB.GetCenter() - boxA.GetPosition();
@@ -432,32 +411,25 @@ CollisionManifold HandleAABBSphereCollision(const ColliderBase& a, const Collide
 
     if (distance < sphereB.GetRadius())
     {
-        manifold.isColliding = true;
+        manifold.normal = localPoint.normalized();
+        manifold.penetration = sphereB.GetRadius() - distance;
 
-        manifold.collisionNormal = localPoint.normalized();
-        manifold.penetrationDepth = sphereB.GetRadius() - distance;
-
-        Vector3 contactPoint = sphereB.GetCenter() + -manifold.collisionNormal * sphereB.GetRadius();
+        Vector3 contactPoint = sphereB.GetCenter() + -manifold.normal * sphereB.GetRadius();
         manifold.contactPoints.push_back(contactPoint);
+
+        return true;
     }
 
-    return manifold;
+    return false;
 }
 
-CollisionManifold HandleAABBAABBCollision(const ColliderBase& a, const ColliderBase& b)
+bool HandleAABBAABBCollision(const ColliderBase& a, const ColliderBase& b, CollisionManifold& manifold)
 {
     const AABB& boxA = static_cast<const AABB&>(a);
     const AABB& boxB = static_cast<const AABB&>(b);
 
-    CollisionManifold manifold;
-    manifold.isColliding = false;
-
-    return manifold;
-
     if (AABB::Overlap(boxA, boxB))
     {
-        manifold.isColliding = true;
-
         static const Vector3 faces[6] =
         {
             Vector3::Left, Vector3::Right,
@@ -490,28 +462,24 @@ CollisionManifold HandleAABBAABBCollision(const ColliderBase& a, const ColliderB
             }
         }
 
-        manifold.collisionNormal = bestAxis;
-        manifold.penetrationDepth = penetration;
+        manifold.normal = bestAxis;
+        manifold.penetration = penetration;
+
+        return true;
     }
 
-    return manifold;
+    return false;
 }
 
-CollisionManifold HandleHSTriHSTriCollision(const ColliderBase& a, const ColliderBase& b)
+bool HandleHSTriHSTriCollision(const ColliderBase& a, const ColliderBase& b, CollisionManifold& manifold)
 {
-    CollisionManifold manifold;
-    manifold.isColliding = false;
-
-    return manifold;
+    return false;
 }
 
-CollisionManifold HandleHSTriSphereCollision(const ColliderBase& a, const ColliderBase& b)
+bool HandleHSTriSphereCollision(const ColliderBase& a, const ColliderBase& b, CollisionManifold& manifold)
 {
     const HalfSpaceTriangle& triangleA = static_cast<const HalfSpaceTriangle&>(a);
     const Sphere& sphereB = static_cast<const Sphere&>(b);
-
-    CollisionManifold manifold;
-    manifold.isColliding = false;
 
     float distance = Vector3::Dot(sphereB.GetCenter() - triangleA.GetPoint(0), triangleA.GetNormal());
 
@@ -525,7 +493,7 @@ CollisionManifold HandleHSTriSphereCollision(const ColliderBase& a, const Collid
 
         // degenerate triangle check
         float area = Vector3::Cross(AB, AC).magnitude();
-        if (area < 1e-6f) { return manifold; }
+        if (area < 1e-6f) { return false; }
 
         Vector3 PA = triangleA.GetPoint(0) - contactPoint;
         Vector3 PB = triangleA.GetPoint(1) - contactPoint;
@@ -537,23 +505,21 @@ CollisionManifold HandleHSTriSphereCollision(const ColliderBase& a, const Collid
 
         if (a >= 0 && b >= 0 && c >= 0)
         {
-            manifold.isColliding = true;
-            manifold.collisionNormal = triangleA.GetNormal();
-            manifold.penetrationDepth = sphereB.GetRadius() - distance;
+            manifold.normal = triangleA.GetNormal();
+            manifold.penetration = sphereB.GetRadius() - distance;
             manifold.contactPoints.push_back(contactPoint);
+
+            return true;
         }
     }
 
-    return manifold;
+    return false;
 }
 
-CollisionManifold HandleHSTriPointCollision(const ColliderBase& a, const ColliderBase& b)
+bool HandleHSTriPointCollision(const ColliderBase& a, const ColliderBase& b, CollisionManifold& manifold)
 {
     const HalfSpaceTriangle& triangleA = static_cast<const HalfSpaceTriangle&>(a);
     const Point& pointB = static_cast<const Point&>(b);
-
-    CollisionManifold manifold;
-    manifold.isColliding = false;
 
     float distance = Vector3::Dot(pointB.GetPosition() - triangleA.GetPoint(0), triangleA.GetNormal());
 
@@ -562,20 +528,21 @@ CollisionManifold HandleHSTriPointCollision(const ColliderBase& a, const Collide
         // barycentric coordinate check to confirm point is inside triangle
         Vector3 contactPoint = pointB.GetPosition() - triangleA.GetNormal() * distance;
 
-        manifold.isColliding = true;
-        manifold.collisionNormal = triangleA.GetNormal();
-        manifold.penetrationDepth = distance;
+        manifold.normal = triangleA.GetNormal();
+        manifold.penetration = distance;
         manifold.contactPoints.push_back(contactPoint);
+
+        return true;
     }
 
-    return manifold;
+    return false;
 }
 
-CollisionManifold Collision::Collide(const ColliderBase& c1, const ColliderBase& c2)
+bool Collision::Collide(const ColliderBase& c1, const ColliderBase& c2, CollisionManifold& manifoldOut)
 {
     size_t c1Index = static_cast<size_t>(c1.GetType());
     size_t c2Index = static_cast<size_t>(c2.GetType());
-    return dispatchTable[c1Index][c2Index](c1, c2);
+    return m_dispatchTable[c1Index][c2Index](c1, c2, manifoldOut);
 }
 
 void Collision::RegisterCollisionHandler(ColliderType typeA, ColliderType typeB, CollisionHandler handler)
@@ -583,14 +550,14 @@ void Collision::RegisterCollisionHandler(ColliderType typeA, ColliderType typeB,
     size_t indexA = static_cast<size_t>(typeA);
     size_t indexB = static_cast<size_t>(typeB);
 
-    dispatchTable[indexA][indexB] = handler;
+    m_dispatchTable[indexA][indexB] = handler;
     if (indexA != indexB)
     {
-        dispatchTable[indexB][indexA] = [handler](const ColliderBase& a, const ColliderBase& b)
+        m_dispatchTable[indexB][indexA] = [handler](const ColliderBase& a, const ColliderBase& b, CollisionManifold& manifoldOut)
         {
-            CollisionManifold manifold = handler(b, a);
-            manifold.collisionNormal = -manifold.collisionNormal;
-            return manifold;
+            bool result = handler(b, a, manifoldOut);
+            manifoldOut.normal = -manifoldOut.normal;
+            return result;
         };
     }
 }
@@ -601,7 +568,7 @@ void Collision::Init()
     {
         for (int j = 0; j < ColliderTypeCount; ++j)
         {
-            dispatchTable[i][j] = NoOpCollision;
+            m_dispatchTable[i][j] = NoOpCollision;
         }
     }
 

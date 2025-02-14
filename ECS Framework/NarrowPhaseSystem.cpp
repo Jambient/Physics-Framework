@@ -7,12 +7,12 @@
 void NarrowPhaseSystem::Update(ECSScene& scene, float dt)
 {
     // broad phase to get collisions that could be intersecting
-    std::vector<std::tuple<Entity, Entity, CollisionManifold>> collisions;
+    std::vector<CollisionInfo> collisions;
     std::vector<std::pair<Entity, Entity>> potential = m_aabbTree.GetPotentialIntersections();
     m_debugPoints.clear();
 
     // narrow phase to confirm each collision
-    for (const auto [entity1, entity2] : potential)
+    for (const auto& [entity1, entity2] : potential)
     {
         // if either entity doesn't have a collider then it cant collide
         if (!scene.HasComponent<Collider>(entity1) ||
@@ -23,31 +23,32 @@ void NarrowPhaseSystem::Update(ECSScene& scene, float dt)
 
         ColliderBase& e1Collider = scene.GetComponent<Collider>(entity1)->GetColliderBase();
         ColliderBase& e2Collider = scene.GetComponent<Collider>(entity2)->GetColliderBase();
+        CollisionManifold manifold;
 
-        CollisionManifold info = Collision::Collide(e1Collider, e2Collider);
-        if (!info) { continue; } // Skip if narrow-phase fails
+        if (!Collision::Collide(e1Collider, e2Collider, manifold))
+            continue; // skip if narrow-phase fails
         
-        m_debugPoints.insert(m_debugPoints.end(), info.contactPoints.begin(), info.contactPoints.end());
+        m_debugPoints.insert(m_debugPoints.end(), manifold.contactPoints.begin(), manifold.contactPoints.end());
 
-        collisions.emplace_back(entity1, entity2, info);
+        collisions.push_back({ entity1, entity2, manifold });
     }
 
     // resolve velocities
     for (int i = 0; i < VELOCITY_ITERATIONS; i++)
     {
-        for (const auto [entity1, entity2, manifold] : collisions)
+        for (const CollisionInfo& info : collisions)
         {
             // get components for entities
-            Transform* e1Transform = scene.GetComponent<Transform>(entity1);
-            Particle* e1Particle = scene.GetComponent<Particle>(entity1);
-            RigidBody* e1RigidBody = scene.GetComponent<RigidBody>(entity1);
-            Transform* e2Transform = scene.GetComponent<Transform>(entity2);
-            Particle* e2Particle = scene.GetComponent<Particle>(entity2);
-            RigidBody* e2RigidBody = scene.GetComponent<RigidBody>(entity2);
+            Transform* e1Transform = scene.GetComponent<Transform>(info.entityA);
+            Particle* e1Particle = scene.GetComponent<Particle>(info.entityA);
+            RigidBody* e1RigidBody = scene.GetComponent<RigidBody>(info.entityA);
+            Transform* e2Transform = scene.GetComponent<Transform>(info.entityB);
+            Particle* e2Particle = scene.GetComponent<Particle>(info.entityB);
+            RigidBody* e2RigidBody = scene.GetComponent<RigidBody>(info.entityB);
 
             float totalMass = e1Particle->InverseMass + e2Particle->InverseMass;
 
-            for (const Vector3& contactPoint : manifold.contactPoints)
+            for (const Vector3& contactPoint : info.manifold.contactPoints)
             {
                 Vector3 relativeA = contactPoint - e1Transform->Position;
                 Vector3 relativeB = contactPoint - e2Transform->Position;
@@ -59,17 +60,17 @@ void NarrowPhaseSystem::Update(ECSScene& scene, float dt)
                 Vector3 fullVelocityB = e2Particle->LinearVelocity + angVelocityB;
                 Vector3 contactVelocity = fullVelocityB - fullVelocityA;
 
-                float impulseForce = Vector3::Dot(contactVelocity, manifold.collisionNormal);
+                float impulseForce = Vector3::Dot(contactVelocity, info.manifold.normal);
                 if (impulseForce > 0.0f) continue;
 
-                Vector3 inertiaA = Vector3::Cross(e1RigidBody->InverseInertiaTensor * Vector3::Cross(relativeA, manifold.collisionNormal), relativeA);
-                Vector3 inertiaB = Vector3::Cross(e2RigidBody->InverseInertiaTensor * Vector3::Cross(relativeB, manifold.collisionNormal), relativeB);
-                float angularEffect = Vector3::Dot(inertiaA + inertiaB, manifold.collisionNormal);
+                Vector3 inertiaA = Vector3::Cross(e1RigidBody->InverseInertiaTensor * Vector3::Cross(relativeA, info.manifold.normal), relativeA);
+                Vector3 inertiaB = Vector3::Cross(e2RigidBody->InverseInertiaTensor * Vector3::Cross(relativeB, info.manifold.normal), relativeB);
+                float angularEffect = Vector3::Dot(inertiaA + inertiaB, info.manifold.normal);
 
                 float restitution = e1Particle->Restitution * e2Particle->Restitution;
                 float j = (-(1.0f + restitution) * impulseForce) / (totalMass + angularEffect);
 
-                Vector3 fullImpulse = manifold.collisionNormal * j;
+                Vector3 fullImpulse = info.manifold.normal * j;
 
                 e1Particle->ApplyLinearImpulse(-fullImpulse);
                 e2Particle->ApplyLinearImpulse(fullImpulse);
@@ -79,7 +80,7 @@ void NarrowPhaseSystem::Update(ECSScene& scene, float dt)
             }
 
             // friction
-            for (const Vector3& contactPoint : manifold.contactPoints)
+            for (const Vector3& contactPoint : info.manifold.contactPoints)
             {
                 Vector3 relativeA = contactPoint - e1Transform->Position;
                 Vector3 relativeB = contactPoint - e2Transform->Position;
@@ -92,7 +93,7 @@ void NarrowPhaseSystem::Update(ECSScene& scene, float dt)
                 Vector3 contactVelocity = fullVelocityB - fullVelocityA;
 
                 // calculate tangent velocity
-                Vector3 tangent = contactVelocity - manifold.collisionNormal * Vector3::Dot(contactVelocity, manifold.collisionNormal);
+                Vector3 tangent = contactVelocity - info.manifold.normal * Vector3::Dot(contactVelocity, info.manifold.normal);
                 if (tangent.magnitude() < 1e-6f)
                     continue;
 
@@ -129,19 +130,19 @@ void NarrowPhaseSystem::Update(ECSScene& scene, float dt)
     // resolve positions
     for (int i = 0; i < POSITION_ITERATIONS; i++)
     {
-        for (const auto [entity1, entity2, manifold] : collisions)
+        for (const CollisionInfo& info : collisions)
         {
-            Transform* e1Transform = scene.GetComponent<Transform>(entity1);
-            Particle* e1Particle = scene.GetComponent<Particle>(entity1);
-            Transform* e2Transform = scene.GetComponent<Transform>(entity2);
-            Particle* e2Particle = scene.GetComponent<Particle>(entity2);
+            Transform* e1Transform = scene.GetComponent<Transform>(info.entityA);
+            Particle* e1Particle = scene.GetComponent<Particle>(info.entityA);
+            Transform* e2Transform = scene.GetComponent<Transform>(info.entityB);
+            Particle* e2Particle = scene.GetComponent<Particle>(info.entityB);
 
             float totalMass = e1Particle->InverseMass + e2Particle->InverseMass;
             if (totalMass == 0)
                 continue;
 
-            float penetration = (manifold.penetrationDepth - POSITION_PENETRATION_THRESHOLD) > 0.0f ? (manifold.penetrationDepth - POSITION_PENETRATION_THRESHOLD) : 0.0f;
-            Vector3 correction = manifold.collisionNormal * (penetration * POSITION_CORRECTION_PERCENT / totalMass);
+            float penetration = (info.manifold.penetration - POSITION_PENETRATION_THRESHOLD) > 0.0f ? (info.manifold.penetration - POSITION_PENETRATION_THRESHOLD) : 0.0f;
+            Vector3 correction = info.manifold.normal * (penetration * POSITION_CORRECTION_PERCENT / totalMass);
 
             e1Transform->Position -= correction * e1Particle->InverseMass;
             e2Transform->Position += correction * e2Particle->InverseMass;
