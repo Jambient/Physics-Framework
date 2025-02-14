@@ -74,12 +74,6 @@ public:
 	 */
 	void InsertEntity(Entity entity, AABB box, bool isStatic = false);
 
-	/**
-	 * @brief Removes a leaf node from the tree.
-	 * @param leafIndex The node index of the leaf node.
-	 */
-	void RemoveLeaf(int leafIndex);
-
 	void RemoveEntity(Entity entity);
 
 	void UpdatePosition(Entity entity, const Vector3& newPosition);
@@ -87,17 +81,18 @@ public:
 	void TriggerUpdate(Entity entity);
 
 	Entity Intersect(const Ray& ray, float& closestDistance);
-	int CalculateNodeLevel(int nodeIndex) const;
-	int GetNodeIndex(const Node& node) const;
 
-	void PrintTree(int index, int depth = 0);
 	int GetRootIndex() const { return m_rootIndex; }
-
-	int GetDeepestLevel() const;
 
 	std::vector<std::pair<Entity, Entity>> GetPotentialIntersections();
 
 private:
+	/**
+	 * @brief Removes a leaf node from the tree.
+	 * @param leafIndex The node index of the leaf node.
+	 */
+	void RemoveLeaf(int leafIndex);
+
 	int AllocateLeafNode(Entity entity, const AABB& box);
 	int AllocateInternalNode();
 	void DeallocateNode(int index);
