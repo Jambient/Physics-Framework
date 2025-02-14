@@ -17,7 +17,7 @@ void BroadPhaseUpdateSystem::Update(ECSScene& scene, float dt)
             }
             else if constexpr (std::is_same_v<T, OBB>)
             {
-                AABB aabb = specificCollider.toAABB();
+                AABB aabb = specificCollider.ToAABB();
                 m_aabbTree.UpdatePosition(entity, aabb.GetPosition());
                 m_aabbTree.UpdateScale(entity, aabb.GetSize());
             }

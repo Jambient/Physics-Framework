@@ -143,7 +143,7 @@ public:
 		m_axes[2] = rotation * Vector3::Forward;
 	}
 
-	inline AABB toAABB()
+	inline AABB ToAABB()
 	{
 		// Compute the absolute values of the axes scaled by the half extents.
 		Vector3 absExtent = Vector3(
