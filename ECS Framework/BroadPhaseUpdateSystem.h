@@ -6,11 +6,11 @@ class AABBTree;
 class BroadPhaseUpdateSystem : public System
 {
 public:
-	BroadPhaseUpdateSystem(AABBTree& tree) : aabbTree(tree) {}
+	BroadPhaseUpdateSystem(AABBTree& tree) : m_aabbTree(tree) {}
 
 	void Update(ECSScene& scene, float dt) final override;
 
 private:
-	AABBTree& aabbTree;
+	AABBTree& m_aabbTree;
 };
 
