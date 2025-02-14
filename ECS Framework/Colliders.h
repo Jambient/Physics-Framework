@@ -8,73 +8,83 @@
 
 enum class ColliderType
 {
-	Point,
-	Plane,
-	HalfSpaceTriangle,
-	Sphere,
-	AlignedBox,
-	OrientedBox
+	POINT,
+	PLANE,
+	HALF_SPACE_TRIANGLE,
+	SPHERE,
+	ALIGNED_BOX,
+	ORIENTED_BOX
 };
 
 const int ColliderTypeCount = 6;
 
-struct ColliderBase
+class ColliderBase
 {
-	ColliderType type;
+public:
+	ColliderBase(ColliderType type) : m_type(type) {}
+	
+	ColliderType GetType() const { return m_type; }
 
-	ColliderBase(ColliderType type) : type(type) {}
+private:
+	ColliderType m_type;
 };
 
-struct Point : public ColliderBase
+class Point : public ColliderBase
 {
-	Point(const Vector3& position) : position(position), ColliderBase(ColliderType::Point) {};
+public:
+	Point(const Vector3& position) : m_position(position), ColliderBase(ColliderType::POINT) {};
 
-	Vector3 position;
+	void SetPosition(const Vector3& newPosition) { m_position = newPosition; }
+	Vector3 GetPosition() const { return m_position; }
+
+private:
+	Vector3 m_position;
 };
 
-struct AABB : public ColliderBase
+class AABB : public ColliderBase
 {
-	AABB() : lowerBound(Vector3::Zero), upperBound(Vector3::Zero), ColliderBase(ColliderType::AlignedBox) {};
+public:
+	AABB() : m_lowerBound(Vector3::Zero), m_upperBound(Vector3::Zero), ColliderBase(ColliderType::ALIGNED_BOX) {};
 	AABB(const Vector3& lowerBound, const Vector3& upperBound)
-		: lowerBound(lowerBound), upperBound(upperBound), ColliderBase(ColliderType::AlignedBox) {};
+		: m_lowerBound(lowerBound), m_upperBound(upperBound), ColliderBase(ColliderType::ALIGNED_BOX) {};
 
-	Vector3 lowerBound;
-	Vector3 upperBound;
+	Vector3 GetLowerBound() const { return m_lowerBound; }
+	Vector3 GetUpperBound() const { return m_upperBound; }
 
-	Vector3 getPosition() const
+	Vector3 GetPosition() const
 	{
-		return (lowerBound + upperBound) * 0.5f;
+		return (m_lowerBound + m_upperBound) * 0.5f;
 	}
 
-	Vector3 getSize() const
+	Vector3 GetSize() const
 	{
-		return upperBound - lowerBound;
+		return m_upperBound - m_lowerBound;
 	}
 
-	float area() const
+	float GetArea() const
 	{
-		Vector3 d = upperBound - lowerBound;
+		Vector3 d = m_upperBound - m_lowerBound;
 		return 2.0f * (d.x * d.y + d.y * d.z + d.z * d.x);
 	}
 
-	AABB enlarged(float factor) const
+	AABB GetEnlarged(float factor) const
 	{
-		Vector3 margin = (upperBound - lowerBound) * factor;
-		return { lowerBound - margin, upperBound + margin };
+		Vector3 margin = (m_upperBound - m_lowerBound) * factor;
+		return { m_lowerBound - margin, m_upperBound + margin };
 	}
 
-	void updatePosition(const Vector3& position)
+	void UpdatePosition(const Vector3& position)
 	{
-		Vector3 delta = position - getPosition();
-		lowerBound += delta;
-		upperBound += delta;
+		Vector3 delta = position - GetPosition();
+		m_lowerBound += delta;
+		m_upperBound += delta;
 	}
 
-	void updateScale(const Vector3& scale)
+	void UpdateScale(const Vector3& scale)
 	{
-		Vector3 position = getPosition();
-		lowerBound = position - scale * 0.5f;
-		upperBound = position + scale * 0.5f;
+		Vector3 position = GetPosition();
+		m_lowerBound = position - scale * 0.5f;
+		m_upperBound = position + scale * 0.5f;
 	}
 
 	static AABB FromPositionScale(const Vector3& position, const Vector3& scale)
@@ -92,81 +102,90 @@ struct AABB : public ColliderBase
 
 	static AABB Union(const AABB& a, const AABB& b)
 	{
-		return { Vector3::Min(a.lowerBound, b.lowerBound), Vector3::Max(a.upperBound, b.upperBound) };
+		return { Vector3::Min(a.GetLowerBound(), b.GetLowerBound()), Vector3::Max(a.GetUpperBound(), b.GetUpperBound()) };
 	}
 
 	static bool Overlap(const AABB& a, const AABB b)
 	{
-		return (a.lowerBound.x <= b.upperBound.x && a.upperBound.x >= b.lowerBound.x) &&
-			(a.lowerBound.y <= b.upperBound.y && a.upperBound.y >= b.lowerBound.y) &&
-			(a.lowerBound.z <= b.upperBound.z && a.upperBound.z >= b.lowerBound.z);
+		Vector3 lowerBoundA = a.GetLowerBound();
+		Vector3 upperBoundA = a.GetUpperBound();
+		Vector3 lowerBoundB = b.GetLowerBound();
+		Vector3 upperBoundB = b.GetUpperBound();
+		return (lowerBoundA.x <= upperBoundB.x && upperBoundA.x >= lowerBoundB.x) &&
+			(lowerBoundA.y <= upperBoundB.y && upperBoundA.y >= lowerBoundB.y) &&
+			(lowerBoundA.z <= upperBoundB.z && upperBoundA.z >= lowerBoundB.z);
 	}
+
+private:
+	Vector3 m_lowerBound;
+	Vector3 m_upperBound;
 };
 
-struct OBB : public ColliderBase
+class OBB : public ColliderBase
 {
-	Vector3 center;
-	Vector3 halfExtents;
-	std::array<Vector3, 3> axes;
-
-	OBB(Vector3 position, Vector3 size, Quaternion rotation) : ColliderBase(ColliderType::OrientedBox)
+public:
+	OBB(Vector3 position, Vector3 size, Quaternion rotation) : ColliderBase(ColliderType::ORIENTED_BOX)
 	{
 		Update(position, size, rotation);
 	}
 
+	Vector3 GetCenter() const { return m_center; }
+	Vector3 GetHalfExtents() const { return m_halfExtents; }
+	Vector3 GetAxis(int index) const { return m_axes[index]; }
+
 	inline void Update(Vector3 position, Vector3 size, Quaternion rotation)
 	{
-		center = position;
-		halfExtents = size * 0.5f;
+		m_center = position;
+		m_halfExtents = size * 0.5f;
 
-		axes[0] = rotation * Vector3::Right;
-		axes[1] = rotation * Vector3::Up;
-		axes[2] = rotation * Vector3::Forward;
+		m_axes[0] = rotation * Vector3::Right;
+		m_axes[1] = rotation * Vector3::Up;
+		m_axes[2] = rotation * Vector3::Forward;
 	}
 
 	inline AABB toAABB()
 	{
 		// Compute the absolute values of the axes scaled by the half extents.
 		Vector3 absExtent = Vector3(
-			fabsf(axes[0].x) * halfExtents.x + fabsf(axes[0].y) * halfExtents.y + fabsf(axes[0].z) * halfExtents.z,
-			fabsf(axes[1].x) * halfExtents.x + fabsf(axes[1].y) * halfExtents.y + fabsf(axes[1].z) * halfExtents.z,
-			fabsf(axes[2].x) * halfExtents.x + fabsf(axes[2].y) * halfExtents.y + fabsf(axes[2].z) * halfExtents.z
+			fabsf(m_axes[0].x) * m_halfExtents.x + fabsf(m_axes[0].y) * m_halfExtents.y + fabsf(m_axes[0].z) * m_halfExtents.z,
+			fabsf(m_axes[1].x) * m_halfExtents.x + fabsf(m_axes[1].y) * m_halfExtents.y + fabsf(m_axes[1].z) * m_halfExtents.z,
+			fabsf(m_axes[2].x) * m_halfExtents.x + fabsf(m_axes[2].y) * m_halfExtents.y + fabsf(m_axes[2].z) * m_halfExtents.z
 		);
 
 		// Compute the min and max of the AABB.
-		Vector3 aabbMin = center - absExtent;
-		Vector3 aabbMax = center + absExtent;
+		Vector3 aabbMin = m_center - absExtent;
+		Vector3 aabbMax = m_center + absExtent;
 
 		return AABB(aabbMin, aabbMax);
 	}
 
 	Matrix4 GetRotationMatrix() const
 	{
-		return Matrix4::FromRotationPosition(Matrix3::FromRotationVectors(axes[0], axes[1], axes[2]), Vector3::Zero);
+		return Matrix4::FromRotationPosition(Matrix3::FromRotationVectors(m_axes[0], m_axes[1], m_axes[2]), Vector3::Zero);
 	}
 
 	Matrix4 GetTransformMatrix() const
 	{
-		return Matrix4::FromRotationPosition(Matrix3::FromRotationVectors(axes[0], axes[1], axes[2]), center);
+		return Matrix4::FromRotationPosition(Matrix3::FromRotationVectors(m_axes[0], m_axes[1], m_axes[2]), m_center);
 	}
 
 	std::vector<Vector3> GetVertices() const {
 		std::vector<Vector3> vertices(8);
 
 		// Compute the corner offsets using the half extents and axes
-		Vector3 right = axes[0] * halfExtents.x;
-		Vector3 up = axes[1] * halfExtents.y;
-		Vector3 forward = axes[2] * halfExtents.z;
+		Vector3 right = m_axes[0] * m_halfExtents.x;
+		Vector3 up = m_axes[1] * m_halfExtents.y;
+		Vector3 forward = m_axes[2] * m_halfExtents.z;
 
 		// Compute the 8 vertices
-		vertices[0] = center + right + up + forward;  // +x, +y, +z
-		vertices[1] = center + right + up - forward;  // +x, +y, -z
-		vertices[2] = center + right - up + forward;  // +x, -y, +z
-		vertices[3] = center + right - up - forward;  // +x, -y, -z
-		vertices[4] = center - right + up + forward;  // -x, +y, +z
-		vertices[5] = center - right + up - forward;  // -x, +y, -z
-		vertices[6] = center - right - up + forward;  // -x, -y, +z
-		vertices[7] = center - right - up - forward;  // -x, -y, -z
+		vertices[0] = m_center + right + up + forward;  // +x, +y, +z
+		vertices[1] = m_center + right + up - forward;  // +x, +y, -z
+		vertices[2] = m_center + right - up + forward;  // +x, -y, +z
+		vertices[3] = m_center + right - up - forward;  // +x, -y, -z
+		vertices[4] = m_center - right + up + forward;  // -x, +y, +z
+		vertices[5] = m_center - right + up - forward;  // -x, +y, -z
+		vertices[6] = m_center - right - up + forward;  // -x, -y, +z
+		vertices[7] = m_center - right - up - forward;  // -x, -y, -z
 
 		return vertices;
 	}
@@ -176,14 +195,14 @@ struct OBB : public ColliderBase
 	{
 		std::vector<Vector3> boxVertices = GetVertices();
 
-		Vector3 normal = axes[axisIndex] * (positiveFace ? 1.0f : -1.0f);
-		Vector3 faceCenter = center + normal * halfExtents[axisIndex];
+		Vector3 normal = m_axes[axisIndex] * (positiveFace ? 1.0f : -1.0f);
+		Vector3 faceCenter = m_center + normal * m_halfExtents[axisIndex];
 
 		int i = (axisIndex + 1) % 3;
 		int j = (axisIndex + 2) % 3;
 
-		Vector3 edge1 = axes[i] * halfExtents[i];
-		Vector3 edge2 = axes[j] * halfExtents[j];
+		Vector3 edge1 = m_axes[i] * m_halfExtents[i];
+		Vector3 edge2 = m_axes[j] * m_halfExtents[j];
 
 		return { faceCenter - edge1 - edge2,
 				 faceCenter + edge1 - edge2,
@@ -191,36 +210,48 @@ struct OBB : public ColliderBase
 				 faceCenter - edge1 + edge2 };
 	}
 
-	/*void GetMinMaxVertexOnAxis(const Vector3& axis, float& minOut, float& maxOut) const
+	float ProjectOntoAxis(const Vector3& axis) const
 	{
-		float centerProjection = Vector3::Dot(center, axis);
+		return m_halfExtents.x * fabsf(Vector3::Dot(axis, m_axes[0])) +
+			m_halfExtents.y * fabsf(Vector3::Dot(axis, m_axes[1])) +
+			m_halfExtents.z * fabsf(Vector3::Dot(axis, m_axes[2]));
+	}
 
-		float extent = 0.0f;
-		for (int i = 0; i < 3; i++)
-		{
-			extent += fabsf(Vector3::Dot(axes[i], axis)) * halfExtents[i];
-		}
-
-		minOut = centerProjection - extent;
-		maxOut = centerProjection + extent;
-	}*/
+private:
+	Vector3 m_center;
+	Vector3 m_halfExtents;
+	std::array<Vector3, 3> m_axes;
 };
 
-struct Sphere : public ColliderBase
+class Sphere : public ColliderBase
 {
-	Sphere(Vector3 center, float radius) : ColliderBase(ColliderType::Sphere), center(center), radius(radius) {}
+public:
+	Sphere(Vector3 center, float radius) : ColliderBase(ColliderType::SPHERE), m_center(center), m_radius(radius) {}
 
-	Vector3 center;
-	float radius;
+	Vector3 GetCenter() const { return m_center; }
+	void SetCenter(Vector3 newCenter) { m_center = newCenter; }
+
+	float GetRadius() const { return m_radius; }
+	void SetRadius(float newRadius) { m_radius = newRadius; }
+
+private:
+	Vector3 m_center;
+	float m_radius;
 };
 
-struct HalfSpaceTriangle : public ColliderBase
+class HalfSpaceTriangle : public ColliderBase
 {
-	HalfSpaceTriangle(const Vector3& point1, const Vector3& point2, const Vector3& point3, const Vector3& normal) : ColliderBase(ColliderType::HalfSpaceTriangle), 
-		point1(point1), point2(point2), point3(point3), normal(normal) {}
+public:
+	HalfSpaceTriangle(const Vector3& point1, const Vector3& point2, const Vector3& point3, const Vector3& normal) : ColliderBase(ColliderType::HALF_SPACE_TRIANGLE)
+	{
+		m_points = { point1, point2, point3 };
+		m_normal = normal;
+	}
 
-	Vector3 point1;
-	Vector3 point2;
-	Vector3 point3;
-	Vector3 normal;
+	Vector3 GetPoint(int index) const { return m_points[index]; }
+	Vector3 GetNormal() const { return m_normal; }
+
+private:
+	std::array<Vector3, 3> m_points;
+	Vector3 m_normal;
 };

@@ -141,7 +141,7 @@ void AABBTree::UpdatePosition(Entity entity, const Vector3& newPosition)
 	// check if the entity actually exists in the tree
 	if (leafIndex == NULL_NODE_INDEX) { return; }
 
-	GetNode(leafIndex).box.updatePosition(newPosition);
+	GetNode(leafIndex).box.UpdatePosition(newPosition);
 }
 
 void AABBTree::UpdateScale(Entity entity, const Vector3& newScale)
@@ -151,7 +151,7 @@ void AABBTree::UpdateScale(Entity entity, const Vector3& newScale)
 	// check if the entity actually exists in the tree
 	if (leafIndex == NULL_NODE_INDEX) { return; }
 
-	GetNode(leafIndex).box.updateScale(newScale);
+	GetNode(leafIndex).box.UpdateScale(newScale);
 }
 
 void AABBTree::TriggerUpdate(Entity entity)
@@ -285,7 +285,7 @@ int AABBTree::AllocateLeafNode(Entity entity, const AABB& box)
 {
 	Node leafNode;
 	leafNode.box = box;
-	leafNode.enlargedBox = box.enlarged(BOX_ENLARGEMENT_FACTOR);
+	leafNode.enlargedBox = box.GetEnlarged(BOX_ENLARGEMENT_FACTOR);
 	leafNode.entity = entity;
 	leafNode.isLeaf = true;
 	m_nodes.push_back(leafNode);
@@ -341,9 +341,9 @@ void AABBTree::DeallocateNode(int index)
 
 int AABBTree::PickBest(const AABB& leafBox)
 {
-	float leafBoxArea = leafBox.area();
+	float leafBoxArea = leafBox.GetArea();
 	int bestSibling = m_rootIndex;
-	float bestCost = AABB::Union(GetNode(m_rootIndex).box, leafBox).area();
+	float bestCost = AABB::Union(GetNode(m_rootIndex).box, leafBox).GetArea();
 
 	std::vector<float> costCache(m_nodeToDenseIndex.size());
 	std::vector<QueueNode> queue;
@@ -367,7 +367,7 @@ int AABBTree::PickBest(const AABB& leafBox)
 		Node& currentNode = GetNode(current.index);
 		int parentIndex = currentNode.parentIndex;
 		int parentCost = parentIndex != NULL_NODE_INDEX ? costCache[parentIndex] : 0;
-		costCache[current.index] = AABB::Union(leafBox, currentNode.box).area() - currentNode.box.area() + parentCost;
+		costCache[current.index] = AABB::Union(leafBox, currentNode.box).GetArea() - currentNode.box.GetArea() + parentCost;
 
 		// calculate the lower bound cost
 		float subTreeLowerBoundCost = leafBoxArea + costCache[current.index];
@@ -381,13 +381,13 @@ int AABBTree::PickBest(const AABB& leafBox)
 			if (child1 != NULL_NODE_INDEX)
 			{
 				Node& child1Node = GetNode(child1);
-				float child1Cost = AABB::Union(leafBox, child1Node.box).area() + costCache[child1Node.parentIndex];
+				float child1Cost = AABB::Union(leafBox, child1Node.box).GetArea() + costCache[child1Node.parentIndex];
 				queue.push_back({ child1, child1Cost });
 			}
 			if (child2 != NULL_NODE_INDEX)
 			{
 				Node& child2Node = GetNode(child2);
-				float child2Cost = AABB::Union(leafBox, child2Node.box).area() + costCache[child2Node.parentIndex];
+				float child2Cost = AABB::Union(leafBox, child2Node.box).GetArea() + costCache[child2Node.parentIndex];
 				queue.push_back({ child2, child2Cost });
 			}
 		}
@@ -417,8 +417,13 @@ bool AABBTree::NeedsUpdate(int index)
 	AABB newBox = node.box;
 	AABB oldBox = node.enlargedBox;
 
-	return (newBox.lowerBound.x < oldBox.lowerBound.x || newBox.lowerBound.y < oldBox.lowerBound.y || newBox.lowerBound.z < oldBox.lowerBound.z ||
-		newBox.upperBound.x > oldBox.upperBound.x || newBox.upperBound.y > oldBox.upperBound.y || newBox.upperBound.z > oldBox.upperBound.z);
+	Vector3 lowerBoundNew = newBox.GetLowerBound();
+	Vector3 upperBoundNew = newBox.GetUpperBound();
+	Vector3 lowerBoundOld = oldBox.GetLowerBound();
+	Vector3 upperBoundOld = oldBox.GetUpperBound();
+
+	return (lowerBoundNew.x < lowerBoundOld.x || lowerBoundNew.y < lowerBoundOld.y || lowerBoundNew.z < lowerBoundOld.z ||
+		upperBoundNew.x > upperBoundOld.x || upperBoundNew.y > upperBoundOld.y || upperBoundNew.z > upperBoundOld.z);
 }
 
 void AABBTree::Rotate(int index)

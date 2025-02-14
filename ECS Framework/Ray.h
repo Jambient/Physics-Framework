@@ -2,7 +2,7 @@
 #include "Vector3.h"
 #include "Ray.h"
 
-struct AABB;
+class AABB;
 
 class Ray
 {

@@ -12,8 +12,8 @@ Ray::Ray(Vector3 origin, Vector3 direction)
 
 bool Ray::Intersect(const AABB& aabb, float& distance) const
 {
-	Vector3 t1 = Vector3::Scale(aabb.lowerBound - m_origin, m_inverseDirection);
-	Vector3 t2 = Vector3::Scale(aabb.upperBound - m_origin, m_inverseDirection);
+	Vector3 t1 = Vector3::Scale(aabb.GetLowerBound() - m_origin, m_inverseDirection);
+	Vector3 t2 = Vector3::Scale(aabb.GetUpperBound() - m_origin, m_inverseDirection);
 
 	float tmin = max(min(t1.x, t2.x), max(min(t1.y, t2.y), min(t1.z, t2.z)));
 	float tmax = min(max(t1.x, t2.x), min(max(t1.y, t2.y), max(t1.z, t2.z)));
