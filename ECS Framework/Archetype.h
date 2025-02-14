@@ -1,10 +1,10 @@
 #pragma once
 #include "Definitions.h"
 #include <vector>
-#include <cstddef> // For size_t
-#include <cstdlib> // For malloc, free
+#include <cstddef>
+#include <cstdlib>
 #include <cassert>
-#include <cstring> // For memcpy
+#include <cstring>
 #include <unordered_map>
 #include <array>
 #include <tuple>
@@ -187,7 +187,7 @@ public:
 private:
 
 	Signature m_signature;
-	Entity m_entityCount;
+	uint32_t m_entityCount;
 	std::array<Column, MAX_COMPONENT_TYPES> m_componentColumns;
 	std::vector<Entity> m_denseIndexToEntity;    // Maps dense index -> entity
 	std::vector<size_t> m_entityToDenseIndex;    // Maps entity -> dense index
