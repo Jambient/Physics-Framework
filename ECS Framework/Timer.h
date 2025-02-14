@@ -13,6 +13,6 @@ public:
 	void Tick();
 
 private:
-	steady_clock::time_point startTime;
-	steady_clock::time_point lastFrame;
+	steady_clock::time_point m_startTime;
+	steady_clock::time_point m_lastFrame;
 };

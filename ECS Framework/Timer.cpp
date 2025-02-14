@@ -2,21 +2,21 @@
 
 Timer::Timer()
 {
-	startTime = steady_clock::now();
+	m_startTime = steady_clock::now();
 	Tick();
 }
 
 double Timer::GetElapsedTime()
 {
-	return duration<double>(steady_clock::now() - startTime).count();
+	return duration<double>(steady_clock::now() - m_startTime).count();
 }
 
 double Timer::GetDeltaTime()
 {
-	return duration<double>(steady_clock::now() - lastFrame).count();
+	return duration<double>(steady_clock::now() - m_lastFrame).count();
 }
 
 void Timer::Tick()
 {
-	lastFrame = steady_clock::now();
+	m_lastFrame = steady_clock::now();
 }
