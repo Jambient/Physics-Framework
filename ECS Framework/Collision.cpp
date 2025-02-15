@@ -1,4 +1,5 @@
 #include "Collision.h"
+#include "Plane.h"
 
 CollisionHandler Collision::m_dispatchTable[ColliderTypeCount][ColliderTypeCount] = {};
 
@@ -7,69 +8,27 @@ bool NoOpCollision(const ColliderBase& a, const ColliderBase& b, CollisionManifo
     throw std::logic_error("Collision between these shapes is not implemented");
 }
 
-bool overlapOnAxis(const OBB& obb1, const OBB& obb2, const Vector3& axis, float& overlap, Vector3& collisionNormal) 
+bool CalculateOverlapOnAxis(const OBB& obb1, const OBB& obb2, const Vector3& axis, float& overlap, Vector3& collisionNormal) 
 {
     Vector3 normalizedAxis = axis.normalized();
     float projection1 = obb1.ProjectOntoAxis(normalizedAxis);
     float projection2 = obb2.ProjectOntoAxis(normalizedAxis);
-    float distance = fabsf(Vector3::Dot(obb2.GetCenter() - obb1.GetCenter(), normalizedAxis));
+
+    float d = Vector3::Dot(obb2.GetCenter() - obb1.GetCenter(), normalizedAxis);
+    float distance = fabsf(d);
 
     overlap = projection1 + projection2 - distance;
     if (overlap > 0) {
         // Ensure the collision normal points from obb1 to obb2
-        collisionNormal = (distance < 0) ? -normalizedAxis : normalizedAxis;
+        collisionNormal = (d < 0) ? -normalizedAxis : normalizedAxis;
         return true;
     }
     return false;
 }
 
-//----------------------------------------------------------------------
-// Helper: Clip a polygon against a plane.
-// The plane is defined by a point (pPlane) and a normal (nPlane)
-// Returns the clipped polygon.
-std::vector<Vector3> clipPolygonAgainstPlane(const std::vector<Vector3>& polygon,
-    const Vector3& pPlane, const Vector3& nPlane)
+void CreateCollisionManifold(const OBB& obbA, const OBB& obbB, const Vector3& collisionNormal, float penetration, CollisionManifold& manifold)
 {
-    std::vector<Vector3> clipped;
-
-    size_t count = polygon.size();
-    for (size_t i = 0; i < count; ++i) {
-        const Vector3& curr = polygon[i];
-        const Vector3& prev = polygon[(i + count - 1) % count];
-
-        float currDist = Vector3::Dot(curr - pPlane, nPlane);
-        float prevDist = Vector3::Dot(prev - pPlane, nPlane);
-
-        // If current point is inside (or on) the plane, add it.
-        if (currDist >= 0)
-        {
-            // If previous point was outside, add the intersection first.
-            if (prevDist < 0) {
-                float t = prevDist / (prevDist - currDist);
-                Vector3 intersect = prev + (curr - prev) * t;
-                clipped.push_back(intersect);
-            }
-            clipped.push_back(curr);
-        }
-        // Else, if current is outside but previous was inside, add intersection.
-        else if (prevDist >= 0) {
-            float t = prevDist / (prevDist - currDist);
-            Vector3 intersect = prev + (curr - prev) * t;
-            clipped.push_back(intersect);
-        }
-    }
-
-    return clipped;
-}
-
-void CreateCollisionManifold(const OBB& obbA, const OBB& obbB,
-    const Vector3& collisionNormal, float penetration,
-    CollisionManifold& manifold)
-{
-    // Step 1. Choose a reference and an incident box.
-    // Here we choose the box whose face is most aligned with the collision normal.
-    // (For simplicity, we assume collisionNormal points from A to B.)
-
+    // choose the faces on either box that align most with the collision normal
     double maxA = 0.0;
     int refFaceA = 0;
     for (int i = 0; i < 3; ++i) {
@@ -90,55 +49,48 @@ void CreateCollisionManifold(const OBB& obbA, const OBB& obbB,
         }
     }
 
-    // We choose the reference box to be the one with the larger face alignment.
-    bool useAAsReference = (maxA >= maxB);
+    // then the reference is the face that is more aligned with the normal
+    bool isBoxAReference = (maxA >= maxB);
 
-    const OBB& refBox = useAAsReference ? obbA : obbB;
-    const OBB& incBox = useAAsReference ? obbB : obbA;
+    const OBB& refBox = isBoxAReference ? obbA : obbB;
+    const OBB& incBox = isBoxAReference ? obbB : obbA;
 
-    // Ensure the reference face normal points in the proper direction.
-    Vector3 refNormal = refBox.GetAxis(useAAsReference ? refFaceA : refFaceB);
+    // make sure the normal for the reference face correctly points in the direction of the face
+    Vector3 refNormal = refBox.GetAxis(isBoxAReference ? refFaceA : refFaceB);
     if (Vector3::Dot(refNormal, collisionNormal) < 0)
-        refNormal = refNormal * -1.0;
+        refNormal = -refNormal;
 
-    // Compute the reference face center.
-    // (For the chosen face, move from the box center along the face normal by the corresponding half extent.)
+    // start building up the reference face clip
     Vector3 refBoxHalfExtents = refBox.GetHalfExtents();
-    float refExtent = (useAAsReference ?
+    float refExtent = (isBoxAReference ?
         (refFaceA == 0 ? refBoxHalfExtents.x :
             refFaceA == 1 ? refBoxHalfExtents.y : refBoxHalfExtents.z) :
         (refFaceB == 0 ? refBoxHalfExtents.x :
             refFaceB == 1 ? refBoxHalfExtents.y : refBoxHalfExtents.z));
+
     Vector3 refFaceCenter = refBox.GetCenter() + refNormal * refExtent;
 
-    // Step 2. Determine the side (edge) axes for the reference face.
-    // These come from the two remaining axes of the reference box.
-    int refAxis0 = (useAAsReference ? refFaceA : refFaceB);
+    int refAxis0 = (isBoxAReference ? refFaceA : refFaceB);
     int sideAxis1 = (refAxis0 + 1) % 3;
     int sideAxis2 = (refAxis0 + 2) % 3;
+
     Vector3 sideNormal1 = refBox.GetAxis(sideAxis1);
     Vector3 sideNormal2 = refBox.GetAxis(sideAxis2);
 
-    // Get the half extents for the reference face in these directions.
     float extent1 = (sideAxis1 == 0 ? refBoxHalfExtents.x : (sideAxis1 == 1 ? refBoxHalfExtents.y : refBoxHalfExtents.z));
     float extent2 = (sideAxis2 == 0 ? refBoxHalfExtents.x : (sideAxis2 == 1 ? refBoxHalfExtents.y : refBoxHalfExtents.z));
 
-    // Define four clipping planes for the reference face.
-    // Each plane is defined by a point and an outward normal (pointing inside the reference face region).
-    struct Plane { Vector3 point; Vector3 normal; };
+    // define the four clipping planes that represent the four edges of the reference face.
+    // the normals of these planes point inwards (towards the center of the reference face)
     std::vector<Plane> clipPlanes(4);
 
-    // For each side, the plane passes through (refFaceCenter ± sideNormal * extent)
-    clipPlanes[0] = { refFaceCenter + sideNormal1 * extent1,  sideNormal1 * -1.0f };
-    clipPlanes[1] = { refFaceCenter - sideNormal1 * extent1,  sideNormal1 * 1.0f };
-    clipPlanes[2] = { refFaceCenter + sideNormal2 * extent2,  sideNormal2 * -1.0f };
-    clipPlanes[3] = { refFaceCenter - sideNormal2 * extent2,  sideNormal2 * 1.0f };
+    clipPlanes[0] = Plane(refFaceCenter + sideNormal1 * extent1,  -sideNormal1);
+    clipPlanes[1] = Plane(refFaceCenter - sideNormal1 * extent1,  sideNormal1);
+    clipPlanes[2] = Plane(refFaceCenter + sideNormal2 * extent2,  -sideNormal2);
+    clipPlanes[3] = Plane(refFaceCenter - sideNormal2 * extent2,  sideNormal2);
 
-    // Also add the reference face plane itself for later depth testing:
-    Plane refPlane = { refFaceCenter, refNormal };
-
-    // Step 3. Identify the incident face from the incident box.
-    // We choose the face whose normal (in world space) is most anti-parallel to the collision normal.
+    // identify the incident face
+    // this is the face whose normal is most opposite to the collision normal
     double minDot = 1e9;
     int incFaceIndex = 0;
     bool isNegativeFace = false;
@@ -146,73 +98,53 @@ void CreateCollisionManifold(const OBB& obbA, const OBB& obbB,
     for (int i = 0; i < 3; ++i) {
         Vector3 faceNormal = incBox.GetAxis(i);
 
-        double dotPos = Vector3::Dot(faceNormal, collisionNormal);     // Positive face normal
-        double dotNeg = Vector3::Dot(faceNormal * -1.0, collisionNormal); // Negative face normal
+        // check both positive and negative face normal
+        double dotPos = Vector3::Dot(faceNormal, collisionNormal);
+        double dotNeg = Vector3::Dot(-faceNormal, collisionNormal);
 
         if (dotPos < minDot) {
             minDot = dotPos;
             incFaceIndex = i;
-            isNegativeFace = false;  // Positive normal is best so far
+            isNegativeFace = false;
         }
         if (dotNeg < minDot) {
             minDot = dotNeg;
             incFaceIndex = i;
-            isNegativeFace = true;   // Negative normal is best so far
+            isNegativeFace = true;
         }
     }
 
-    // Set the incident face normal
+    // get the incident face normal
     Vector3 incFaceNormal = incBox.GetAxis(incFaceIndex);
     if (isNegativeFace) {
-        incFaceNormal = incFaceNormal * -1.0;  // Flip if selecting negative face
+        incFaceNormal = -incFaceNormal;
     }
 
     std::vector<Vector3> incidentFace = incBox.GetFaceVertices(incFaceIndex, !isNegativeFace);
 
-    //// Compute the incident face center.
-    //double incExtent = (incFaceIndex == 0 ? incBox.halfExtents.x :
-    //    incFaceIndex == 1 ? incBox.halfExtents.y : incBox.halfExtents.z);
-    //Vector3 incFaceCenter = incBox.center + incFaceNormal * incExtent;
-
-    //// Get the two remaining axes for the incident face.
-    //int incAxis1 = (incFaceIndex + 1) % 3;
-    //int incAxis2 = (incFaceIndex + 2) % 3;
-    //Vector3 incAxisVec1 = incBox.axes[incAxis1];
-    //Vector3 incAxisVec2 = incBox.axes[incAxis2];
-
-    //double incExtent1 = (incAxis1 == 0 ? incBox.halfExtents.x :
-    //    incAxis1 == 1 ? incBox.halfExtents.y : incBox.halfExtents.z);
-    //double incExtent2 = (incAxis2 == 0 ? incBox.halfExtents.x :
-    //    incAxis2 == 1 ? incBox.halfExtents.y : incBox.halfExtents.z);
-
-    //// Build the incident face polygon (a rectangle with 4 vertices).
-    //std::vector<Vector3> incidentFace(4);
-    //incidentFace[0] = incFaceCenter + incAxisVec1 * incExtent1 + incAxisVec2 * incExtent2;
-    //incidentFace[1] = incFaceCenter - incAxisVec1 * incExtent1 + incAxisVec2 * incExtent2;
-    //incidentFace[2] = incFaceCenter - incAxisVec1 * incExtent1 - incAxisVec2 * incExtent2;
-    //incidentFace[3] = incFaceCenter + incAxisVec1 * incExtent1 - incAxisVec2 * incExtent2;
-
-    // Step 4. Clip the incident face polygon against the side planes of the reference face.
+    // clip the incident face against the four planes of the reference face
     std::vector<Vector3> clippedPolygon = incidentFace;
-    for (const auto& plane : clipPlanes)
-        clippedPolygon = clipPolygonAgainstPlane(clippedPolygon, plane.point, plane.normal);
+    for (const Plane& plane : clipPlanes)
+        clippedPolygon = plane.ClipPolygon(clippedPolygon);
 
-    // Step 5. For each vertex in the clipped polygon, compute the penetration relative to the reference face plane.
-    manifold.normal = collisionNormal;   // Use the collision normal provided.
-    manifold.penetration = penetration;    // Use the penetration provided.
+    // for any points in the clipped polygon that are left, compute their penetration into the reference plane
+    manifold.normal = collisionNormal;
+    manifold.penetration = penetration;
     manifold.contactPoints.clear();
+
+    Plane refPlane = Plane(refFaceCenter, refNormal);
     const float kEpsilon = 1e-6;
+
     for (const Vector3& p : clippedPolygon) {
-        float separation = Vector3::Dot(p - refPlane.point, refPlane.normal);
-        // Only add contact points that are within the penetration tolerance.
+        float separation = refPlane.DistanceToPoint(p);
+
         if (separation <= kEpsilon) {
-            // Optionally, you can project the contact point onto the reference plane.
-            Vector3 contactPoint = p - refPlane.normal * separation;
+            Vector3 contactPoint = p - refPlane.GetNormal() * separation;
             manifold.contactPoints.push_back(contactPoint);
         }
     }
 
-    // Limit to a maximum of 4 contact points.
+    // limit contact points to 4
     if (manifold.contactPoints.size() > 4)
         manifold.contactPoints.resize(4);
 }
@@ -323,7 +255,7 @@ bool HandleObbObbCollision(const ColliderBase& a, const ColliderBase& b, Collisi
     
         float overlap;
         Vector3 collisionNormal;
-        if (!overlapOnAxis(boxA, boxB, axes[i], overlap, collisionNormal)) {
+        if (!CalculateOverlapOnAxis(boxA, boxB, axes[i], overlap, collisionNormal)) {
             // Separating axis found, no collision
             return false;
         }

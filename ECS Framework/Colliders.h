@@ -9,14 +9,13 @@
 enum class ColliderType
 {
 	POINT,
-	PLANE,
 	HALF_SPACE_TRIANGLE,
 	SPHERE,
 	ALIGNED_BOX,
 	ORIENTED_BOX
 };
 
-const int ColliderTypeCount = 6;
+const int ColliderTypeCount = 5;
 
 class ColliderBase
 {
