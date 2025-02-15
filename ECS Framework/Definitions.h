@@ -22,3 +22,6 @@ const int SPRING_ITERATIONS = 10;
 
 const float POSITION_CORRECTION_PERCENT = 0.2f;
 const float POSITION_PENETRATION_THRESHOLD = 0.01f;
+
+// MISC
+#define EPSILON 1e-6f

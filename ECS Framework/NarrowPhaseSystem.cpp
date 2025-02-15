@@ -94,7 +94,7 @@ void NarrowPhaseSystem::Update(ECSScene& scene, float dt)
 
                 // calculate tangent velocity
                 Vector3 tangent = contactVelocity - info.manifold.normal * Vector3::Dot(contactVelocity, info.manifold.normal);
-                if (tangent.magnitude() < 1e-6f)
+                if (tangent.magnitude() < EPSILON)
                     continue;
 
                 tangent.normalize();
@@ -163,7 +163,7 @@ void NarrowPhaseSystem::Update(ECSScene& scene, float dt)
 
             Vector3 delta = e2Transform->Position - e1Transform->Position;
             float currentLength = delta.magnitude();
-            if (currentLength < 1e-6f) return;
+            if (currentLength < EPSILON) return;
 
             if (currentLength > 5.0f * spring->RestLength)
             {

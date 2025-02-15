@@ -6,6 +6,7 @@
 #include "Vector3.h"
 #include "Matrix3.h"
 #include "Matrix4.h"
+#include "Definitions.h"
 
 // this quaternion class was made with great help from https://www.3dgep.com/understanding-quaternions/ 
 // which goes through a large amount of the required equations.
@@ -284,7 +285,7 @@ public:
 		float sinAngle = sin(angle);
 
 		// this stops divide by zero errors for small angles
-		if (fabsf(sinAngle) < 1e-6f) { return Lerp(a, b, t); }
+		if (fabsf(sinAngle) < EPSILON) { return Lerp(a, b, t); }
 
 		// this stops the interpolation travelling the "long-way" around the 4D sphere in some cases
 		float dot = Dot(a, b);

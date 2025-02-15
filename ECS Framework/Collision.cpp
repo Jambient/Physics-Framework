@@ -1,5 +1,6 @@
 #include "Collision.h"
 #include "Plane.h"
+#include "Definitions.h"
 
 CollisionHandler Collision::m_dispatchTable[ColliderTypeCount][ColliderTypeCount] = {};
 
@@ -133,12 +134,11 @@ void CreateCollisionManifold(const OBB& obbA, const OBB& obbB, const Vector3& co
     manifold.contactPoints.clear();
 
     Plane refPlane = Plane(refFaceCenter, refNormal);
-    const float kEpsilon = 1e-6;
 
     for (const Vector3& p : clippedPolygon) {
         float separation = refPlane.DistanceToPoint(p);
 
-        if (separation <= kEpsilon) {
+        if (separation <= EPSILON) {
             Vector3 contactPoint = p - refPlane.GetNormal() * separation;
             manifold.contactPoints.push_back(contactPoint);
         }
@@ -251,7 +251,7 @@ bool HandleObbObbCollision(const ColliderBase& a, const ColliderBase& b, Collisi
     
     // Test each axis for overlap
     for (int i = 0; i < axisCount; ++i) {
-        if (axes[i].magnitude() < 1e-6) continue; // Skip near-zero axes
+        if (axes[i].magnitude() < EPSILON) continue; // Skip near-zero axes
     
         float overlap;
         Vector3 collisionNormal;
@@ -425,7 +425,7 @@ bool HandleHSTriSphereCollision(const ColliderBase& a, const ColliderBase& b, Co
 
         // degenerate triangle check
         float area = Vector3::Cross(AB, AC).magnitude();
-        if (area < 1e-6f) { return false; }
+        if (area < EPSILON) { return false; }
 
         Vector3 PA = triangleA.GetPoint(0) - contactPoint;
         Vector3 PB = triangleA.GetPoint(1) - contactPoint;
@@ -455,7 +455,7 @@ bool HandleHSTriPointCollision(const ColliderBase& a, const ColliderBase& b, Col
 
     float distance = Vector3::Dot(pointB.GetPosition() - triangleA.GetPoint(0), triangleA.GetNormal());
 
-    if (distance >= 0 && distance <= 1e-6f)
+    if (distance >= 0 && distance <= EPSILON)
     {
         // barycentric coordinate check to confirm point is inside triangle
         Vector3 contactPoint = pointB.GetPosition() - triangleA.GetNormal() * distance;
