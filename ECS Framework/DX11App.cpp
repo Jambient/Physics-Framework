@@ -699,8 +699,8 @@ void DX11App::Update()
         Transform* transform = m_scene.GetComponent<Transform>(m_draggingEntity);
         Particle* particle = m_scene.GetComponent<Particle>(m_draggingEntity);
 
-        Vector3 delta = newDragPosition - transform->Position;
-        Vector3 velocity = particle->LinearVelocity;
+        Vector3 delta = newDragPosition - transform->position;
+        Vector3 velocity = particle->linearVelocity;
         float stiffness = 10.0f;
         float damping = 2.0f;
 
@@ -717,10 +717,10 @@ void DX11App::Update()
             Transform* transformComponent = m_scene.GetComponent<Transform>(m_selectedEntity);
 
             ImGui::Text("Transform Component:");
-            ImGui::InputFloat3("Position", &transformComponent->Position.x);
-            ImGui::InputFloat3("Scale", &transformComponent->Scale.x);
+            ImGui::InputFloat3("Position", &transformComponent->position.x);
+            ImGui::InputFloat3("Scale", &transformComponent->scale.x);
 
-            Quaternion& rotation = transformComponent->Rotation;
+            Quaternion& rotation = transformComponent->rotation;
             ImGui::SliderFloat4("Rotation (Quaternion)", &rotation.r, -1.0f, 1.0f);
             rotation.normalize();
 
@@ -736,17 +736,17 @@ void DX11App::Update()
             Particle* particleComponent = m_scene.GetComponent<Particle>(m_selectedEntity);
 
             ImGui::Text("Particle Component:");
-            ImGui::InputFloat3("LinearVelocity", &particleComponent->LinearVelocity.x);
-            ImGui::InputFloat3("Force", &particleComponent->Force.x);
-            ImGui::Text("Mass: %.1f", 1.0f / particleComponent->InverseMass);
+            ImGui::InputFloat3("LinearVelocity", &particleComponent->linearVelocity.x);
+            ImGui::InputFloat3("Force", &particleComponent->force.x);
+            ImGui::Text("Mass: %.1f", 1.0f / particleComponent->inverseMass);
         }
 
         if (m_scene.HasComponent<RigidBody>(m_selectedEntity))
         {
             RigidBody* rigidBodyComponent = m_scene.GetComponent<RigidBody>(m_selectedEntity);
             ImGui::Text("RigidBody Component:");
-            ImGui::InputFloat3("AngularVelocity", &rigidBodyComponent->AngularVelocity.x);
-            ImGui::InputFloat3("Torque", &rigidBodyComponent->Torque.x);
+            ImGui::InputFloat3("AngularVelocity", &rigidBodyComponent->angularVelocity.x);
+            ImGui::InputFloat3("Torque", &rigidBodyComponent->torque.x);
         }
 
         if (ImGui::Button("Remove Entity"))
@@ -816,13 +816,13 @@ void DX11App::Draw()
     sm->SetActiveShader("SimpleShaders");
 
     m_scene.ForEach<Transform, Mesh>([&](Entity entity, Transform* transform, Mesh* mesh) {
-        XMMATRIX matrixTransform = XMMatrixScaling(transform->Scale.x, transform->Scale.y, transform->Scale.z) * XMMATRIX(transform->Rotation.toRotationMatrix()) * XMMatrixTranslation(transform->Position.x, transform->Position.y, transform->Position.z);
+        XMMATRIX matrixTransform = XMMatrixScaling(transform->scale.x, transform->scale.y, transform->scale.z) * XMMATRIX(transform->rotation.toRotationMatrix()) * XMMatrixTranslation(transform->position.x, transform->position.y, transform->position.z);
         transformData.World = XMMatrixTranspose(matrixTransform);
         sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
 
         m_immediateContext->PSSetShaderResources(0, 1, &m_crateMaterialSRV);
 
-        MeshData meshData = MeshLoader::GetMesh(mesh->MeshId);
+        MeshData meshData = MeshLoader::GetMesh(mesh->meshID);
 
         UINT stride = meshData.VBStride;
         UINT offset = meshData.VBOffset;
@@ -847,10 +847,10 @@ void DX11App::Draw()
     //Vector3 camPos = Vector3(camPosDX.x, camPosDX.y, camPosDX.z);
     //for (const Node& node : m_aabbTree.GetNodes())
     //{
-    //    Vector3 boxPos = node.box.getPosition();
+    //    Vector3 boxPos = node.box.GetPosition();
     //    if (node.isLeaf && (boxPos - camPos).magnitude() <= 10.0f)// m_aabbTree.GetNode(node.child1).isLeaf || m_aabbTree.GetNode(node.child2).isLeaf)
     //    {
-    //        Vector3 boxSize = node.box.getSize();
+    //        Vector3 boxSize = node.box.GetSize();
 
     //        XMMATRIX transform = XMMatrixScaling(boxSize.x, boxSize.y, boxSize.z) * XMMatrixTranslation(boxPos.x, boxPos.y, boxPos.z);
 
@@ -893,8 +893,8 @@ void DX11App::Draw()
 
     m_scene.ForEach<Spring>([&](Entity entity, Spring* spring) {
 
-        Vector3 start = m_scene.GetComponent<Transform>(spring->Entity1)->Position;
-        Vector3 end = m_scene.GetComponent<Transform>(spring->Entity2)->Position;
+        Vector3 start = m_scene.GetComponent<Transform>(spring->entityA)->position;
+        Vector3 end = m_scene.GetComponent<Transform>(spring->entityB)->position;
 
         springVertices.push_back({ XMFLOAT3(start.x, start.y, start.z), XMFLOAT3(), XMFLOAT2(), XMFLOAT4() });
         springVertices.push_back({ XMFLOAT3(end.x, end.y, end.z), XMFLOAT3(), XMFLOAT2(), XMFLOAT4() });
@@ -996,7 +996,7 @@ void DX11App::OnMouseClick(WPARAM pressedBtn, int x, int y)
             if (m_scene.HasComponent<RigidBody>(entity))
             {
                 Vector3 intersectionPosition = ray.GetOrigin() + ray.GetDirection() * intersectDistance;
-                Vector3 localPosition = intersectionPosition - m_scene.GetComponent<Transform>(entity)->Position;
+                Vector3 localPosition = intersectionPosition - m_scene.GetComponent<Transform>(entity)->position;
                 Vector3 torque = Vector3::Cross(localPosition, force);
 
                 m_scene.GetComponent<RigidBody>(entity)->ApplyAngularImpuse(torque);
@@ -1007,7 +1007,7 @@ void DX11App::OnMouseClick(WPARAM pressedBtn, int x, int y)
             m_draggingEntity = entity;
             if (entity != INVALID_ENTITY && m_scene.HasComponent<Transform>(entity))
             {
-                m_draggingDistance = (m_scene.GetComponent<Transform>(entity)->Position - ray.GetOrigin()).magnitude();
+                m_draggingDistance = (m_scene.GetComponent<Transform>(entity)->position - ray.GetOrigin()).magnitude();
             }
         }
     }

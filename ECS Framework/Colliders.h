@@ -144,14 +144,12 @@ public:
 
 	inline AABB ToAABB()
 	{
-		// Compute the absolute values of the axes scaled by the half extents.
 		Vector3 absExtent = Vector3(
-			fabsf(m_axes[0].x) * m_halfExtents.x + fabsf(m_axes[0].y) * m_halfExtents.y + fabsf(m_axes[0].z) * m_halfExtents.z,
-			fabsf(m_axes[1].x) * m_halfExtents.x + fabsf(m_axes[1].y) * m_halfExtents.y + fabsf(m_axes[1].z) * m_halfExtents.z,
-			fabsf(m_axes[2].x) * m_halfExtents.x + fabsf(m_axes[2].y) * m_halfExtents.y + fabsf(m_axes[2].z) * m_halfExtents.z
+			fabsf(m_axes[0].x) * m_halfExtents.x + fabsf(m_axes[1].x) * m_halfExtents.y + fabsf(m_axes[2].x) * m_halfExtents.z,
+			fabsf(m_axes[0].y) * m_halfExtents.x + fabsf(m_axes[1].y) * m_halfExtents.y + fabsf(m_axes[2].y) * m_halfExtents.z,
+			fabsf(m_axes[0].z) * m_halfExtents.x + fabsf(m_axes[1].z) * m_halfExtents.y + fabsf(m_axes[2].z) * m_halfExtents.z
 		);
 
-		// Compute the min and max of the AABB.
 		Vector3 aabbMin = m_center - absExtent;
 		Vector3 aabbMax = m_center + absExtent;
 

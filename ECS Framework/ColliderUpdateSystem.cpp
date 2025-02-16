@@ -9,21 +9,21 @@ void ColliderUpdateSystem::Update(ECSScene& scene, float dt)
 
                 if constexpr (std::is_same_v<T, Sphere>)
                 {
-                    specificCollider.SetCenter(transform->Position);
+                    specificCollider.SetCenter(transform->position);
                 }
                 else if constexpr (std::is_same_v<T, OBB>)
                 {
-                    specificCollider.Update(transform->Position, transform->Scale, transform->Rotation);
+                    specificCollider.Update(transform->position, transform->scale, transform->rotation);
                 }
                 else if constexpr (std::is_same_v<T, AABB>)
                 {
-                    specificCollider.UpdatePosition(transform->Position);
-                    specificCollider.UpdateScale(transform->Scale);
+                    specificCollider.UpdatePosition(transform->position);
+                    specificCollider.UpdateScale(transform->scale);
                 }
                 else if constexpr (std::is_same_v<T, Point>)
                 {
-                    specificCollider.SetPosition(transform->Position);
+                    specificCollider.SetPosition(transform->position);
                 }
-                }, collider->Collider);
+                }, collider->collider);
         });
 }

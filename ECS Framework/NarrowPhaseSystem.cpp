@@ -46,28 +46,28 @@ void NarrowPhaseSystem::Update(ECSScene& scene, float dt)
             Particle* e2Particle = scene.GetComponent<Particle>(info.entityB);
             RigidBody* e2RigidBody = scene.GetComponent<RigidBody>(info.entityB);
 
-            float totalMass = e1Particle->InverseMass + e2Particle->InverseMass;
+            float totalMass = e1Particle->inverseMass + e2Particle->inverseMass;
 
             for (const Vector3& contactPoint : info.manifold.contactPoints)
             {
-                Vector3 relativeA = contactPoint - e1Transform->Position;
-                Vector3 relativeB = contactPoint - e2Transform->Position;
+                Vector3 relativeA = contactPoint - e1Transform->position;
+                Vector3 relativeB = contactPoint - e2Transform->position;
 
-                Vector3 angVelocityA = Vector3::Cross(e1RigidBody->AngularVelocity, relativeA);
-                Vector3 angVelocityB = Vector3::Cross(e2RigidBody->AngularVelocity, relativeB);
+                Vector3 angVelocityA = Vector3::Cross(e1RigidBody->angularVelocity, relativeA);
+                Vector3 angVelocityB = Vector3::Cross(e2RigidBody->angularVelocity, relativeB);
 
-                Vector3 fullVelocityA = e1Particle->LinearVelocity + angVelocityA;
-                Vector3 fullVelocityB = e2Particle->LinearVelocity + angVelocityB;
+                Vector3 fullVelocityA = e1Particle->linearVelocity + angVelocityA;
+                Vector3 fullVelocityB = e2Particle->linearVelocity + angVelocityB;
                 Vector3 contactVelocity = fullVelocityB - fullVelocityA;
 
                 float impulseForce = Vector3::Dot(contactVelocity, info.manifold.normal);
                 if (impulseForce > 0.0f) continue;
 
-                Vector3 inertiaA = Vector3::Cross(e1RigidBody->InverseInertiaTensor * Vector3::Cross(relativeA, info.manifold.normal), relativeA);
-                Vector3 inertiaB = Vector3::Cross(e2RigidBody->InverseInertiaTensor * Vector3::Cross(relativeB, info.manifold.normal), relativeB);
+                Vector3 inertiaA = Vector3::Cross(e1RigidBody->inverseInertiaTensor * Vector3::Cross(relativeA, info.manifold.normal), relativeA);
+                Vector3 inertiaB = Vector3::Cross(e2RigidBody->inverseInertiaTensor * Vector3::Cross(relativeB, info.manifold.normal), relativeB);
                 float angularEffect = Vector3::Dot(inertiaA + inertiaB, info.manifold.normal);
 
-                float restitution = e1Particle->Restitution * e2Particle->Restitution;
+                float restitution = e1Particle->restitution * e2Particle->restitution;
                 float j = (-(1.0f + restitution) * impulseForce) / (totalMass + angularEffect);
 
                 Vector3 fullImpulse = info.manifold.normal * j;
@@ -82,14 +82,14 @@ void NarrowPhaseSystem::Update(ECSScene& scene, float dt)
             // friction
             for (const Vector3& contactPoint : info.manifold.contactPoints)
             {
-                Vector3 relativeA = contactPoint - e1Transform->Position;
-                Vector3 relativeB = contactPoint - e2Transform->Position;
+                Vector3 relativeA = contactPoint - e1Transform->position;
+                Vector3 relativeB = contactPoint - e2Transform->position;
 
-                Vector3 angVelocityA = Vector3::Cross(e1RigidBody->AngularVelocity, relativeA);
-                Vector3 angVelocityB = Vector3::Cross(e2RigidBody->AngularVelocity, relativeB);
+                Vector3 angVelocityA = Vector3::Cross(e1RigidBody->angularVelocity, relativeA);
+                Vector3 angVelocityB = Vector3::Cross(e2RigidBody->angularVelocity, relativeB);
 
-                Vector3 fullVelocityA = e1Particle->LinearVelocity + angVelocityA;
-                Vector3 fullVelocityB = e2Particle->LinearVelocity + angVelocityB;
+                Vector3 fullVelocityA = e1Particle->linearVelocity + angVelocityA;
+                Vector3 fullVelocityB = e2Particle->linearVelocity + angVelocityB;
                 Vector3 contactVelocity = fullVelocityB - fullVelocityA;
 
                 // calculate tangent velocity
@@ -104,8 +104,8 @@ void NarrowPhaseSystem::Update(ECSScene& scene, float dt)
 
                 Vector3 rAct = Vector3::Cross(relativeA, tangent);
                 Vector3 rBct = Vector3::Cross(relativeB, tangent);
-                Vector3 angInertiaA = Vector3::Cross(e1RigidBody->InverseInertiaTensor * rAct, relativeA);
-                Vector3 angInertiaB = Vector3::Cross(e2RigidBody->InverseInertiaTensor * rBct, relativeB);
+                Vector3 angInertiaA = Vector3::Cross(e1RigidBody->inverseInertiaTensor * rAct, relativeA);
+                Vector3 angInertiaB = Vector3::Cross(e2RigidBody->inverseInertiaTensor * rBct, relativeB);
                 float angularEffect = Vector3::Dot(angInertiaA + angInertiaB, tangent);
 
                 jt = jt / (totalMass + angularEffect);
@@ -137,15 +137,15 @@ void NarrowPhaseSystem::Update(ECSScene& scene, float dt)
             Transform* e2Transform = scene.GetComponent<Transform>(info.entityB);
             Particle* e2Particle = scene.GetComponent<Particle>(info.entityB);
 
-            float totalMass = e1Particle->InverseMass + e2Particle->InverseMass;
+            float totalMass = e1Particle->inverseMass + e2Particle->inverseMass;
             if (totalMass == 0)
                 continue;
 
             float penetration = (info.manifold.penetration - POSITION_PENETRATION_THRESHOLD) > 0.0f ? (info.manifold.penetration - POSITION_PENETRATION_THRESHOLD) : 0.0f;
             Vector3 correction = info.manifold.normal * (penetration * POSITION_CORRECTION_PERCENT / totalMass);
 
-            e1Transform->Position -= correction * e1Particle->InverseMass;
-            e2Transform->Position += correction * e2Particle->InverseMass;
+            e1Transform->position -= correction * e1Particle->inverseMass;
+            e2Transform->position += correction * e2Particle->inverseMass;
         }
     }
 
@@ -153,19 +153,19 @@ void NarrowPhaseSystem::Update(ECSScene& scene, float dt)
     for (int i = 0; i < SPRING_ITERATIONS; i++)
     {
         scene.ForEach<Spring>([&](Entity entity, Spring* spring) {
-            Transform* e1Transform = scene.GetComponent<Transform>(spring->Entity1);
-            Particle* e1Particle = scene.GetComponent<Particle>(spring->Entity1);
-            Transform* e2Transform = scene.GetComponent<Transform>(spring->Entity2);
-            Particle* e2Particle = scene.GetComponent<Particle>(spring->Entity2);
+            Transform* e1Transform = scene.GetComponent<Transform>(spring->entityA);
+            Particle* e1Particle = scene.GetComponent<Particle>(spring->entityA);
+            Transform* e2Transform = scene.GetComponent<Transform>(spring->entityB);
+            Particle* e2Particle = scene.GetComponent<Particle>(spring->entityB);
 
-            float totalMass = e1Particle->InverseMass + e2Particle->InverseMass;
+            float totalMass = e1Particle->inverseMass + e2Particle->inverseMass;
             if (totalMass == 0.0f) return;
 
-            Vector3 delta = e2Transform->Position - e1Transform->Position;
+            Vector3 delta = e2Transform->position - e1Transform->position;
             float currentLength = delta.magnitude();
             if (currentLength < EPSILON) return;
 
-            if (currentLength > 5.0f * spring->RestLength)
+            if (currentLength > 5.0f * spring->restLength)
             {
                 scene.DestroyEntity(entity);
                 return;
@@ -173,10 +173,10 @@ void NarrowPhaseSystem::Update(ECSScene& scene, float dt)
 
             Vector3 normal = delta / currentLength;
 
-            Vector3 relativeVelocity = e2Particle->LinearVelocity - e1Particle->LinearVelocity;
+            Vector3 relativeVelocity = e2Particle->linearVelocity - e1Particle->linearVelocity;
             float relVelAlongNormal = Vector3::Dot(relativeVelocity, normal);
-            float displacement = currentLength - spring->RestLength;
-            float F = -spring->Stiffness * displacement - 0.5f * relVelAlongNormal;
+            float displacement = currentLength - spring->restLength;
+            float F = -spring->stiffness * displacement - 0.5f * relVelAlongNormal;
 
             float impulseScalar = F / totalMass;
             Vector3 impulse = normal * impulseScalar;

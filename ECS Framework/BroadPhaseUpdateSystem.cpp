@@ -30,7 +30,7 @@ void BroadPhaseUpdateSystem::Update(ECSScene& scene, float dt)
             {
                 m_aabbTree.UpdatePosition(entity, specificCollider.GetPosition());
             }
-            }, collider->Collider);
+            }, collider->collider);
 
         m_aabbTree.TriggerUpdate(entity);
         });
