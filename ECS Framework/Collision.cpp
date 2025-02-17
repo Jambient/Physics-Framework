@@ -56,22 +56,10 @@ void CreateCollisionManifold(const OBB& obbA, const OBB& obbB, const Vector3& co
     const OBB& refBox = isBoxAReference ? obbA : obbB;
     const OBB& incBox = isBoxAReference ? obbB : obbA;
 
-    // make sure the normal for the reference face correctly points in the direction of the face
-    /*Vector3 refNormal = refBox.GetAxis(isBoxAReference ? refFaceA : refFaceB);
-    if (Vector3::Dot(refNormal, collisionNormal) < 0)
-        refNormal = -refNormal;*/
-
     Vector3 refNormal = refBox.GetAxis(isBoxAReference ? refFaceA : refFaceB);
-    // For box A (reference), ensure the face normal points toward box B.
-    if (isBoxAReference) {
-        if (Vector3::Dot(refNormal, collisionNormal) < 0)
-            refNormal = -refNormal;
-    }
-    // For box B (reference), the face normal should point from B toward A, 
-    // so it must be opposite to the collision normal.
-    else {
-        if (Vector3::Dot(refNormal, collisionNormal) > 0)
-            refNormal = -refNormal;
+    if (Vector3::Dot(refNormal, incBox.GetCenter() - refBox.GetCenter()) < 0)
+    {
+        refNormal = -refNormal;
     }
 
     // start building up the reference face clip
@@ -113,8 +101,8 @@ void CreateCollisionManifold(const OBB& obbA, const OBB& obbB, const Vector3& co
         Vector3 faceNormal = incBox.GetAxis(i);
 
         // check both positive and negative face normal
-        double dotPos = Vector3::Dot(faceNormal, collisionNormal);
-        double dotNeg = Vector3::Dot(-faceNormal, collisionNormal);
+        double dotPos = Vector3::Dot(faceNormal, isBoxAReference ? collisionNormal : -collisionNormal);
+        double dotNeg = Vector3::Dot(-faceNormal, isBoxAReference ? collisionNormal : -collisionNormal);
 
         if (dotPos < minDot) {
             minDot = dotPos;
@@ -130,11 +118,10 @@ void CreateCollisionManifold(const OBB& obbA, const OBB& obbB, const Vector3& co
 
     // get the incident face normal
     Vector3 incFaceNormal = incBox.GetAxis(incFaceIndex);
-    if (isNegativeFace) {
+    if (Vector3::Dot(incFaceNormal, refBox.GetCenter() - incBox.GetCenter()) < 0)
+    {
         incFaceNormal = -incFaceNormal;
     }
-
-    std::cout << isBoxAReference << std::endl;
 
     std::vector<Vector3> incidentFace = incBox.GetFaceVertices(incFaceIndex, !isNegativeFace);
 
@@ -157,6 +144,11 @@ void CreateCollisionManifold(const OBB& obbA, const OBB& obbB, const Vector3& co
             Vector3 contactPoint = p - refPlane.GetNormal() * separation;
             manifold.contactPoints.push_back(contactPoint);
         }
+    }
+
+    if (manifold.contactPoints.size() == 0)
+    {
+        std::cout << "NO CONTACT POINTS" << std::endl;
     }
 
     // limit contact points to 4
@@ -472,7 +464,6 @@ bool HandleHSTriPointCollision(const ColliderBase& a, const ColliderBase& b, Col
 
     if (distance >= 0 && distance <= EPSILON)
     {
-        // barycentric coordinate check to confirm point is inside triangle
         Vector3 contactPoint = pointB.GetPosition() - triangleA.GetNormal() * distance;
 
         manifold.normal = triangleA.GetNormal();
@@ -483,6 +474,27 @@ bool HandleHSTriPointCollision(const ColliderBase& a, const ColliderBase& b, Col
     }
 
     return false;
+}
+
+bool HandleHSTriOBBCollision(const ColliderBase& a, const ColliderBase& b, CollisionManifold& manifold)
+{
+    const HalfSpaceTriangle& triangleA = static_cast<const HalfSpaceTriangle&>(a);
+    const OBB& boxB = static_cast<const OBB&>(b);
+
+    for (const Vector3& point : boxB.GetVertices())
+    {
+        float distance = Vector3::Dot(point - triangleA.GetPoint(0), triangleA.GetNormal());
+        if (distance < 0)
+        {
+            Vector3 contactPoint = point - triangleA.GetNormal() * distance;
+
+            manifold.normal = triangleA.GetNormal();
+            manifold.penetration = max(manifold.penetration, fabsf(distance));
+            manifold.contactPoints.push_back(contactPoint);
+        }
+    }
+
+    return manifold.contactPoints.size() > 0;
 }
 
 bool Collision::Collide(const ColliderBase& c1, const ColliderBase& c2, CollisionManifold& manifoldOut)
@@ -539,4 +551,5 @@ void Collision::Init()
     Collision::RegisterCollisionHandler(ColliderType::HALF_SPACE_TRIANGLE, ColliderType::HALF_SPACE_TRIANGLE, HandleHSTriHSTriCollision);
     Collision::RegisterCollisionHandler(ColliderType::HALF_SPACE_TRIANGLE, ColliderType::SPHERE, HandleHSTriSphereCollision);
     Collision::RegisterCollisionHandler(ColliderType::HALF_SPACE_TRIANGLE, ColliderType::POINT, HandleHSTriPointCollision);
+    Collision::RegisterCollisionHandler(ColliderType::HALF_SPACE_TRIANGLE, ColliderType::ORIENTED_BOX, HandleHSTriOBBCollision);
 }

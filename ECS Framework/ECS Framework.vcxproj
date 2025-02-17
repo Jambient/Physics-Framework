@@ -163,6 +163,7 @@
     <ClInclude Include="NarrowPhaseSystem.h" />
     <ClInclude Include="OBJLoader.h" />
     <ClInclude Include="IntegratorSystem.h" />
+    <ClInclude Include="PhysicsHelper.h" />
     <ClInclude Include="Plane.h" />
     <ClInclude Include="Quaternion.h" />
     <ClInclude Include="Ray.h" />
@@ -209,6 +210,7 @@
     <ClCompile Include="MeshLoader.cpp" />
     <ClCompile Include="NarrowPhaseSystem.cpp" />
     <ClCompile Include="OBJLoader.cpp" />
+    <ClCompile Include="PhysicsHelper.cpp" />
     <ClCompile Include="Ray.cpp" />
     <ClCompile Include="ShaderManager.cpp" />
     <ClCompile Include="Terrain.cpp" />
