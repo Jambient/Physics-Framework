@@ -57,9 +57,22 @@ void CreateCollisionManifold(const OBB& obbA, const OBB& obbB, const Vector3& co
     const OBB& incBox = isBoxAReference ? obbB : obbA;
 
     // make sure the normal for the reference face correctly points in the direction of the face
-    Vector3 refNormal = refBox.GetAxis(isBoxAReference ? refFaceA : refFaceB);
+    /*Vector3 refNormal = refBox.GetAxis(isBoxAReference ? refFaceA : refFaceB);
     if (Vector3::Dot(refNormal, collisionNormal) < 0)
-        refNormal = -refNormal;
+        refNormal = -refNormal;*/
+
+    Vector3 refNormal = refBox.GetAxis(isBoxAReference ? refFaceA : refFaceB);
+    // For box A (reference), ensure the face normal points toward box B.
+    if (isBoxAReference) {
+        if (Vector3::Dot(refNormal, collisionNormal) < 0)
+            refNormal = -refNormal;
+    }
+    // For box B (reference), the face normal should point from B toward A, 
+    // so it must be opposite to the collision normal.
+    else {
+        if (Vector3::Dot(refNormal, collisionNormal) > 0)
+            refNormal = -refNormal;
+    }
 
     // start building up the reference face clip
     Vector3 refBoxHalfExtents = refBox.GetHalfExtents();
@@ -120,6 +133,8 @@ void CreateCollisionManifold(const OBB& obbA, const OBB& obbB, const Vector3& co
     if (isNegativeFace) {
         incFaceNormal = -incFaceNormal;
     }
+
+    std::cout << isBoxAReference << std::endl;
 
     std::vector<Vector3> incidentFace = incBox.GetFaceVertices(incFaceIndex, !isNegativeFace);
 
