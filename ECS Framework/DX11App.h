@@ -97,7 +97,7 @@ private:
 
 	Terrain* m_terrain;
 
-	UINT maxDebugSprings = 3000;
+	UINT maxDebugSprings = 20000;
 	ID3D11Buffer* m_springVertexBuffer;
 
 	/**

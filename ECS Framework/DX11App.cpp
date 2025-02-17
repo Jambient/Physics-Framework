@@ -414,43 +414,20 @@ HRESULT DX11App::Init()
         Spring{ entities[1], entities[3], 3.0f, 0.5f }
     );*/
 
-    /*Entity currentEntityNum = m_scene.CreateEntity();
-    m_scene.AddComponent(
-        currentEntityNum,
-        Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 1 / 0.1f, 0.2f }
-    );
-    m_scene.AddComponent(
-        currentEntityNum,
-        Transform{ Vector3::Up * 10.0f, Quaternion(), Vector3(0.05f, 0.05f, 0.05f) }
-    );
-    m_scene.AddComponent(
-        currentEntityNum,
-        RigidBody{ Vector3::Zero, Vector3::Zero, Vector3::Zero, Matrix3(Vector3::Zero) }
-    );
-    m_scene.AddComponent(
-        currentEntityNum,
-        Collider{ Point(Vector3::Up * 10.0f) }
-    );
-    m_scene.AddComponent(
-        currentEntityNum,
-        Mesh{ MeshLoader::GetMeshID("Sphere") }
-    );
-    m_aabbTree.InsertEntity(currentEntityNum, AABB::FromPositionScale(Vector3::Up * 10.0f, Vector3(0.1f, 0.1f, 0.1f)));*/
-
     Vector3 startPosition = Vector3(-5.0f, 10.0f, 0.0f);
     float startEntity = m_scene.GetEntityCount() - 1;
-    float currentEntityNum = 0;
+    Entity currentEntityNum = 0;
     constexpr float rows = 30;
     constexpr float cols = 30;
-    float spacing = 0.15f;
-    float springStiffness = 3.0f;
+    float spacing = 0.2f;
+    float springStiffness = 6.0f;
     constexpr unsigned int pointCount = rows * cols;
 
     std::array<Entity, pointCount> clothEntities = {};
 
-    for (float y = 0; y < rows; y++)
+    for (int y = 0; y < rows; y++)
     {
-        for (float x = 0; x < cols; x++)
+        for (int x = 0; x < cols; x++)
         {
             Vector3 pointPosition = startPosition + Vector3::Right * x * spacing + Vector3::Forward * y * spacing;
             float anchored = y == 0 || y == rows - 1 || x == 0 || x == cols - 1;
@@ -482,6 +459,7 @@ HRESULT DX11App::Init()
             m_aabbTree.InsertEntity(currentEntityNum, AABB::FromPositionScale(pointPosition, Vector3(0.1f, 0.1f, 0.1f)), anchored);
             clothEntities[x + y * cols] = currentEntityNum;
 
+            // structural springs
             if (x > 0 && y > 0)
             {
                 Entity a = clothEntities[x + y * cols];
@@ -522,8 +500,81 @@ HRESULT DX11App::Init()
                     Spring{ a, b, spacing, springStiffness }
                 );
             }
+
+            // shearing springs
+            if (y > 0 && x < cols - 1)
+            {
+                Entity a = clothEntities[x + y * cols];
+                Entity b = clothEntities[(x + 1) + (y - 1) * cols];
+
+                Entity spring1 = m_scene.CreateEntity();
+                m_scene.AddComponent(
+                    spring1,
+                    Spring{ a, b, spacing, springStiffness }
+                );
+            }
+
+            if (y > 0 && x > 0)
+            {
+                Entity a = clothEntities[x + y * cols];
+                Entity b = clothEntities[(x - 1) + (y - 1) * cols];
+
+                Entity spring1 = m_scene.CreateEntity();
+                m_scene.AddComponent(
+                    spring1,
+                    Spring{ a, b, spacing, springStiffness }
+                );
+            }
+
+            // bending springs
+            if (x > 0 && x % 2 == 0)
+            {
+                Entity a = clothEntities[x + y * cols];
+                Entity b = clothEntities[(x - 2) + y * cols];
+
+                Entity spring1 = m_scene.CreateEntity();
+                m_scene.AddComponent(
+                    spring1,
+                    Spring{ a, b, spacing, springStiffness }
+                );
+            }
+            if (y > 0 && y % 2 == 0)
+            {
+                Entity a = clothEntities[x + y * cols];
+                Entity b = clothEntities[x + (y - 2) * cols];
+
+                Entity spring1 = m_scene.CreateEntity();
+                m_scene.AddComponent(
+                    spring1,
+                    Spring{ a, b, spacing, springStiffness }
+                );
+            }
         }
     }
+
+    /*Entity testSphereEntity = m_scene.CreateEntity();
+    Vector3 sphereCenter = Vector3(startPosition.x + cols / 2 * spacing, 7.0f, startPosition.z + rows / 2 * spacing);
+    m_scene.AddComponent(
+        testSphereEntity,
+        Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 0.0f, 0.2f }
+    );
+    m_scene.AddComponent(
+        testSphereEntity,
+        Transform{ sphereCenter, Quaternion(), Vector3::One }
+    );
+    m_scene.AddComponent(
+        testSphereEntity,
+        RigidBody{ Vector3::Zero, Vector3::Zero, Vector3::Zero, Matrix3(Vector3::Zero) }
+    );
+    m_scene.AddComponent(
+        testSphereEntity,
+        Collider{ Sphere(sphereCenter, 1.0f) }
+    );
+    m_scene.AddComponent(
+        testSphereEntity,
+        Mesh{ MeshLoader::GetMeshID("Sphere") }
+    );
+    m_aabbTree.InsertEntity(testSphereEntity, AABB::FromPositionScale(sphereCenter, Vector3::One));*/
 
     ////////////////////////////////////////
 
@@ -848,7 +899,7 @@ void DX11App::Draw()
     //for (const Node& node : m_aabbTree.GetNodes())
     //{
     //    Vector3 boxPos = node.box.GetPosition();
-    //    if (node.isLeaf && (boxPos - camPos).magnitude() <= 10.0f)// m_aabbTree.GetNode(node.child1).isLeaf || m_aabbTree.GetNode(node.child2).isLeaf)
+    //    if ((boxPos - camPos).magnitude() <= 10.0f)// m_aabbTree.GetNode(node.child1).isLeaf || m_aabbTree.GetNode(node.child2).isLeaf)
     //    {
     //        Vector3 boxSize = node.box.GetSize();
 
