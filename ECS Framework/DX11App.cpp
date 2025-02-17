@@ -17,6 +17,7 @@
 #include "ColliderUpdateSystem.h"
 #include "BroadPhaseUpdateSystem.h"
 #include "NarrowPhaseSystem.h"
+#include "PhysicsHelper.h"
 #include <chrono>
 
 #define ThrowIfFailed(x)  if (FAILED(x)) { throw new std::bad_exception;}
@@ -414,143 +415,7 @@ HRESULT DX11App::Init()
         Spring{ entities[1], entities[3], 3.0f, 0.5f }
     );*/
 
-    Vector3 startPosition = Vector3(-5.0f, 10.0f, 0.0f);
-    float startEntity = m_scene.GetEntityCount() - 1;
-    Entity currentEntityNum = 0;
-    constexpr float rows = 30;
-    constexpr float cols = 30;
-    float spacing = 0.2f;
-    float springStiffness = 6.0f;
-    constexpr unsigned int pointCount = rows * cols;
-
-    std::array<Entity, pointCount> clothEntities = {};
-
-    for (int y = 0; y < rows; y++)
-    {
-        for (int x = 0; x < cols; x++)
-        {
-            Vector3 pointPosition = startPosition + Vector3::Right * x * spacing + Vector3::Forward * y * spacing;
-            float anchored = y == 0 || y == rows - 1 || x == 0 || x == cols - 1;
-            float mass = anchored ? 0.0f : 1 / 0.05f;
-            //float mass = 1.0f / 0.05f;
-
-            currentEntityNum = m_scene.CreateEntity();
-            m_scene.AddComponent(
-                currentEntityNum,
-                Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, mass, 0.2f }
-            );
-            m_scene.AddComponent(
-                currentEntityNum,
-                Transform{ pointPosition, Quaternion(), Vector3(0.05f, 0.05f, 0.05f) }
-            );
-            m_scene.AddComponent(
-                currentEntityNum,
-                RigidBody{ Vector3::Zero, Vector3::Zero, Vector3::Zero, Matrix3(Vector3::Zero) }
-            );
-            m_scene.AddComponent(
-                currentEntityNum,
-                Collider{ Point(pointPosition) }
-            );
-            m_scene.AddComponent(
-                currentEntityNum,
-                Mesh{ MeshLoader::GetMeshID("Sphere") }
-            );
-
-            m_aabbTree.InsertEntity(currentEntityNum, AABB::FromPositionScale(pointPosition, Vector3(0.1f, 0.1f, 0.1f)), anchored);
-            clothEntities[x + y * cols] = currentEntityNum;
-
-            // structural springs
-            if (x > 0 && y > 0)
-            {
-                Entity a = clothEntities[x + y * cols];
-                Entity b = clothEntities[(x - 1) + y * cols];
-                Entity c = clothEntities[x + (y - 1) * cols];
-                
-                Entity spring1 = m_scene.CreateEntity();
-                m_scene.AddComponent(
-                    spring1,
-                    Spring{ a, b, spacing, springStiffness }
-                );
-
-                Entity spring2 = m_scene.CreateEntity();
-                m_scene.AddComponent(
-                    spring2,
-                    Spring{ a, c, spacing, springStiffness }
-                );
-            }
-            if (x == 0 && y > 0)
-            {
-                Entity a = clothEntities[x + y * cols];
-                Entity b = clothEntities[x + (y - 1) * cols];
-
-                Entity spring1 = m_scene.CreateEntity();
-                m_scene.AddComponent(
-                    spring1,
-                    Spring{ a, b, spacing, springStiffness }
-                );
-            }
-            if (x > 0 && y == 0)
-            {
-                Entity a = clothEntities[x + y * cols];
-                Entity b = clothEntities[(x - 1) + y * cols];
-
-                Entity spring1 = m_scene.CreateEntity();
-                m_scene.AddComponent(
-                    spring1,
-                    Spring{ a, b, spacing, springStiffness }
-                );
-            }
-
-            // shearing springs
-            if (y > 0 && x < cols - 1)
-            {
-                Entity a = clothEntities[x + y * cols];
-                Entity b = clothEntities[(x + 1) + (y - 1) * cols];
-
-                Entity spring1 = m_scene.CreateEntity();
-                m_scene.AddComponent(
-                    spring1,
-                    Spring{ a, b, spacing, springStiffness }
-                );
-            }
-
-            if (y > 0 && x > 0)
-            {
-                Entity a = clothEntities[x + y * cols];
-                Entity b = clothEntities[(x - 1) + (y - 1) * cols];
-
-                Entity spring1 = m_scene.CreateEntity();
-                m_scene.AddComponent(
-                    spring1,
-                    Spring{ a, b, spacing, springStiffness }
-                );
-            }
-
-            // bending springs
-            if (x > 0 && x % 2 == 0)
-            {
-                Entity a = clothEntities[x + y * cols];
-                Entity b = clothEntities[(x - 2) + y * cols];
-
-                Entity spring1 = m_scene.CreateEntity();
-                m_scene.AddComponent(
-                    spring1,
-                    Spring{ a, b, spacing, springStiffness }
-                );
-            }
-            if (y > 0 && y % 2 == 0)
-            {
-                Entity a = clothEntities[x + y * cols];
-                Entity b = clothEntities[x + (y - 2) * cols];
-
-                Entity spring1 = m_scene.CreateEntity();
-                m_scene.AddComponent(
-                    spring1,
-                    Spring{ a, b, spacing, springStiffness }
-                );
-            }
-        }
-    }
+    //PhysicsHelper::CreateCloth(m_scene, m_aabbTree, Vector3(0.0f, 10.0f, 0.0f), 30, 30, 0.2f, 1.0f, true, true, true);
 
     /*Entity testSphereEntity = m_scene.CreateEntity();
     Vector3 sphereCenter = Vector3(startPosition.x + cols / 2 * spacing, 7.0f, startPosition.z + rows / 2 * spacing);
@@ -656,91 +521,6 @@ void DX11App::Update()
 
     ImGuiIO& io = ImGui::GetIO();
     ImGui::Begin("Entity Editor");
-    if (ImGui::Button("Add Sphere Entity"))
-    {
-        if (!m_scene.ReachedEntityCap())
-        {
-            XMFLOAT3 camPos = m_camera->GetPosition();
-            XMFLOAT3 camDirection = m_camera->GetLook();
-
-            Entity newEntity = m_scene.CreateEntity();
-            m_scene.AddComponent(
-                newEntity,
-                Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 1 / 2.0f, 0.8f}
-            );
-            m_scene.AddComponent(
-                newEntity,
-                Transform{ Vector3(camPos.x, camPos.y, camPos.z), Quaternion(), Vector3(1.0f, 1.0f, 1.0f) }
-            );
-
-            float intertiaValue = (2.0f / 5.0f) * 2.0f * (1.0f * 1.0f);
-            Vector3 inverseSphereInertia = Vector3(
-                intertiaValue,
-                intertiaValue,
-                intertiaValue
-            ).reciprocal();
-
-            m_scene.AddComponent(
-                newEntity,
-                RigidBody{ Vector3::Zero, Vector3::Zero, inverseSphereInertia, Matrix3(inverseSphereInertia) }
-            );
-
-            m_scene.AddComponent(
-                newEntity,
-                Collider{ Sphere(Vector3(camPos.x, camPos.y, camPos.z), 1.0f) }
-            );
-            m_scene.AddComponent(
-                newEntity,
-                Mesh{ MeshLoader::GetMeshID("Sphere") }
-            );
-
-            m_aabbTree.InsertEntity(newEntity, AABB::FromPositionScale(Vector3(camPos.x, camPos.y, camPos.z), Vector3::One));
-
-            m_scene.GetComponent<Particle>(newEntity)->ApplyLinearImpulse(Vector3(camDirection.x, camDirection.y, camDirection.z) * 10.0f);
-        }
-    }
-    if (ImGui::Button("Add Box Entity"))
-    {
-        if (!m_scene.ReachedEntityCap())
-        {
-            XMFLOAT3 camPos = m_camera->GetPosition();
-            XMFLOAT3 camDirection = m_camera->GetLook();
-
-            Entity newEntity = m_scene.CreateEntity();
-            m_scene.AddComponent(
-                newEntity,
-                Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 1 / 2.0f, 0.8f }
-            );
-            m_scene.AddComponent(
-                newEntity,
-                Transform{ Vector3(camPos.x, camPos.y, camPos.z), Quaternion(), Vector3::One }
-            );
-
-            Vector3 inverseCubeInertia = Vector3(
-                (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f),
-                (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f),
-                (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f)
-            ).reciprocal();
-
-            m_scene.AddComponent(
-                newEntity,
-                RigidBody{ Vector3::Zero, Vector3::Zero, inverseCubeInertia, Matrix3(inverseCubeInertia) }
-            );
-
-            m_scene.AddComponent(
-                newEntity,
-                Collider{ OBB(Vector3(camPos.x, camPos.y, camPos.z), Vector3::One, Quaternion()) }
-            );
-            m_scene.AddComponent(
-                newEntity,
-                Mesh{ MeshLoader::GetMeshID("Cube") }
-            );
-
-            m_aabbTree.InsertEntity(newEntity, AABB::FromPositionScale(Vector3(camPos.x, camPos.y, camPos.z), Vector3::One));
-
-            m_scene.GetComponent<Particle>(newEntity)->ApplyLinearImpulse(Vector3(camDirection.x, camDirection.y, camDirection.z) * 10.0f);
-        }
-    }
 
     if (io.MouseDown[0] && m_currentClickAction == ClickAction::DRAG && m_draggingEntity != INVALID_ENTITY)
     {
@@ -811,6 +591,114 @@ void DX11App::Update()
     {
         ImGui::Text("No entity selected.");
     }
+    ImGui::End();
+
+    ImGui::Begin("Interaction Menu");
+    if (ImGui::Button("Add Sphere Entity"))
+    {
+        if (!m_scene.ReachedEntityCap())
+        {
+            XMFLOAT3 camPos = m_camera->GetPosition();
+            XMFLOAT3 camDirection = m_camera->GetLook();
+
+            Entity newEntity = m_scene.CreateEntity();
+            m_scene.AddComponent(
+                newEntity,
+                Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 1 / 2.0f, 0.8f }
+            );
+            m_scene.AddComponent(
+                newEntity,
+                Transform{ Vector3(camPos.x, camPos.y, camPos.z), Quaternion(), Vector3::One / 2.0f }
+            );
+
+            float intertiaValue = (2.0f / 5.0f) * 2.0f * (0.5f * 0.5f);
+            Vector3 inverseSphereInertia = Vector3(
+                intertiaValue,
+                intertiaValue,
+                intertiaValue
+            ).reciprocal();
+
+            m_scene.AddComponent(
+                newEntity,
+                RigidBody{ Vector3::Zero, Vector3::Zero, inverseSphereInertia, Matrix3(inverseSphereInertia) }
+            );
+
+            m_scene.AddComponent(
+                newEntity,
+                Collider{ Sphere(Vector3(camPos.x, camPos.y, camPos.z), 0.5f) }
+            );
+            m_scene.AddComponent(
+                newEntity,
+                Mesh{ MeshLoader::GetMeshID("Sphere") }
+            );
+
+            m_aabbTree.InsertEntity(newEntity, AABB::FromPositionScale(Vector3(camPos.x, camPos.y, camPos.z), Vector3::One));
+
+            m_scene.GetComponent<Particle>(newEntity)->ApplyLinearImpulse(Vector3(camDirection.x, camDirection.y, camDirection.z) * 10.0f);
+        }
+    }
+    if (ImGui::Button("Add Box Entity"))
+    {
+        if (!m_scene.ReachedEntityCap())
+        {
+            XMFLOAT3 camPos = m_camera->GetPosition();
+            XMFLOAT3 camDirection = m_camera->GetLook();
+
+            Entity newEntity = m_scene.CreateEntity();
+            m_scene.AddComponent(
+                newEntity,
+                Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 1 / 2.0f, 0.8f }
+            );
+            m_scene.AddComponent(
+                newEntity,
+                Transform{ Vector3(camPos.x, camPos.y, camPos.z), Quaternion(), Vector3::One }
+            );
+
+            Vector3 inverseCubeInertia = Vector3(
+                (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f),
+                (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f),
+                (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f)
+            ).reciprocal();
+
+            m_scene.AddComponent(
+                newEntity,
+                RigidBody{ Vector3::Zero, Vector3::Zero, inverseCubeInertia, Matrix3(inverseCubeInertia) }
+            );
+
+            m_scene.AddComponent(
+                newEntity,
+                Collider{ OBB(Vector3(camPos.x, camPos.y, camPos.z), Vector3::One, Quaternion()) }
+            );
+            m_scene.AddComponent(
+                newEntity,
+                Mesh{ MeshLoader::GetMeshID("Cube") }
+            );
+
+            m_aabbTree.InsertEntity(newEntity, AABB::FromPositionScale(Vector3(camPos.x, camPos.y, camPos.z), Vector3::One));
+
+            m_scene.GetComponent<Particle>(newEntity)->ApplyLinearImpulse(Vector3(camDirection.x, camDirection.y, camDirection.z) * 10.0f);
+        }
+    }
+    if (ImGui::Button("Create Explosion Force"))
+    {
+        Vector3 explosionCenter = Vector3(0.0f, 1.0f, 0.0f);
+        float explosionImpulsePower = 25.0f;
+        float explosionRadius = 12.0f;
+        m_scene.ForEach<Transform, Particle>([&explosionCenter, explosionRadius, explosionImpulsePower](Entity entity, Transform* transform, Particle* particle)
+            {
+                Vector3 vecFromCenter = transform->position - explosionCenter;
+                float powerMult = 1 - (vecFromCenter.magnitude() / explosionRadius);
+                if (powerMult > 0)
+                {
+                    particle->ApplyLinearImpulse(vecFromCenter * powerMult * explosionImpulsePower);
+                }
+            });
+    }
+    if (ImGui::Button("Toggle Contact Point Visualisation"))
+    {
+        m_showDebugPoints = !m_showDebugPoints;
+    }
+    ImGui::Text("Contact Point Visualisation: %s", m_showDebugPoints ? "true" : "false");
     ImGui::End();
 
     ImGui::Begin("Application Stats");
