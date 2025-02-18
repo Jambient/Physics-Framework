@@ -18,6 +18,7 @@
 #include "BroadPhaseUpdateSystem.h"
 #include "NarrowPhaseSystem.h"
 #include "PhysicsHelper.h"
+#include "MaterialManager.h"
 #include <chrono>
 
 #define ThrowIfFailed(x)  if (FAILED(x)) { throw new std::bad_exception;}
@@ -38,7 +39,6 @@ Ray DX11App::GetRayFromScreenPosition(int x, int y)
 
     // convert to eye coordinates
     XMVECTOR rayEye = XMVector4Transform(rayClip, invertedProj);
-    //rayEye = XMVectorSetZ(rayEye, -1.0f);
     rayEye = XMVectorSetW(rayEye, 0.0f);
 
     // convert to world coordinates
@@ -229,14 +229,52 @@ HRESULT DX11App::Init()
     MeshLoader::LoadMesh("Models/Sphere.obj", "Sphere", m_device, false);
 
     // load textures
-    Material* rockMaterial = new Material();
-    rockMaterial->LoadTexture(m_device, TextureType::ALBEDO, L"Textures\\Materials\\Crate\\COLOR.dds");
-    rockMaterial->LoadTexture(m_device, TextureType::NORMAL, L"Textures\\Materials\\Crate\\NORMAL.dds");
-    rockMaterial->LoadTexture(m_device, TextureType::AMBIENT, L"Textures\\Materials\\Crate\\AO.dds");
-    rockMaterial->LoadTexture(m_device, TextureType::ROUGHNESS, L"Textures\\Materials\\Crate\\ROUGHNESS.dds");
-    rockMaterial->LoadTexture(m_device, TextureType::HEIGHT, L"Textures\\Materials\\Crate\\HEIGHT.dds");
+    Material crateMaterial = Material();
+    crateMaterial.LoadTexture(m_device, TextureType::ALBEDO, L"Textures\\Materials\\Crate\\COLOR.dds");
+    crateMaterial.LoadTexture(m_device, TextureType::NORMAL, L"Textures\\Materials\\Crate\\NORMAL.dds");
+    crateMaterial.LoadTexture(m_device, TextureType::AMBIENT, L"Textures\\Materials\\Crate\\AO.dds");
+    crateMaterial.LoadTexture(m_device, TextureType::ROUGHNESS, L"Textures\\Materials\\Crate\\ROUGHNESS.dds");
+    crateMaterial.LoadTexture(m_device, TextureType::HEIGHT, L"Textures\\Materials\\Crate\\HEIGHT.dds");
 
-    m_crateMaterialSRV = rockMaterial->GetMaterialAsTextureArray(m_device, m_immediateContext);
+    Material concreteMaterial = Material();
+    concreteMaterial.LoadTexture(m_device, TextureType::ALBEDO, L"Textures\\Materials\\Concrete\\COLOR.dds");
+    concreteMaterial.LoadTexture(m_device, TextureType::NORMAL, L"Textures\\Materials\\Concrete\\NORMAL.dds");
+    concreteMaterial.LoadTexture(m_device, TextureType::AMBIENT, L"Textures\\Materials\\Concrete\\AO.dds");
+    concreteMaterial.LoadTexture(m_device, TextureType::ROUGHNESS, L"Textures\\Materials\\Concrete\\ROUGHNESS.dds");
+    concreteMaterial.LoadTexture(m_device, TextureType::METALLIC, L"Textures\\Materials\\Concrete\\METALLIC.dds");
+    concreteMaterial.LoadTexture(m_device, TextureType::HEIGHT, L"Textures\\Materials\\Concrete\\HEIGHT.dds");
+
+    Material goldMaterial = Material();
+    goldMaterial.LoadTexture(m_device, TextureType::ALBEDO, L"Textures\\Materials\\Gold\\COLOR.dds");
+    goldMaterial.LoadTexture(m_device, TextureType::NORMAL, L"Textures\\Materials\\Gold\\NORMAL.dds");
+    goldMaterial.LoadTexture(m_device, TextureType::AMBIENT, L"Textures\\Materials\\Gold\\AO.dds");
+    goldMaterial.LoadTexture(m_device, TextureType::ROUGHNESS, L"Textures\\Materials\\Gold\\ROUGHNESS.dds");
+    goldMaterial.LoadTexture(m_device, TextureType::METALLIC, L"Textures\\Materials\\Gold\\METALLIC.dds");
+    goldMaterial.LoadTexture(m_device, TextureType::HEIGHT, L"Textures\\Materials\\Gold\\HEIGHT.dds");
+
+    Material marbleMaterial = Material();
+    marbleMaterial.LoadTexture(m_device, TextureType::ALBEDO, L"Textures\\Materials\\Marble\\COLOR.dds");
+    marbleMaterial.LoadTexture(m_device, TextureType::NORMAL, L"Textures\\Materials\\Marble\\NORMAL.dds");
+    marbleMaterial.LoadTexture(m_device, TextureType::AMBIENT, L"Textures\\Materials\\Marble\\AO.dds");
+    marbleMaterial.LoadTexture(m_device, TextureType::ROUGHNESS, L"Textures\\Materials\\Marble\\ROUGHNESS.dds");
+    marbleMaterial.LoadTexture(m_device, TextureType::METALLIC, L"Textures\\Materials\\Marble\\METALLIC.dds");
+    marbleMaterial.LoadTexture(m_device, TextureType::HEIGHT, L"Textures\\Materials\\Marble\\HEIGHT.dds");
+
+    Material panelsMaterial = Material();
+    panelsMaterial.LoadTexture(m_device, TextureType::ALBEDO, L"Textures\\Materials\\Panels\\COLOR.dds");
+    panelsMaterial.LoadTexture(m_device, TextureType::NORMAL, L"Textures\\Materials\\Panels\\NORMAL.dds");
+    panelsMaterial.LoadTexture(m_device, TextureType::AMBIENT, L"Textures\\Materials\\Panels\\AO.dds");
+    panelsMaterial.LoadTexture(m_device, TextureType::ROUGHNESS, L"Textures\\Materials\\Panels\\ROUGHNESS.dds");
+    panelsMaterial.LoadTexture(m_device, TextureType::METALLIC, L"Textures\\Materials\\Panels\\METALLIC.dds");
+    panelsMaterial.LoadTexture(m_device, TextureType::HEIGHT, L"Textures\\Materials\\Panels\\HEIGHT.dds");
+
+    MaterialManager::AddMaterialSRV("Crate", crateMaterial.GetMaterialAsTextureArray(m_device, m_immediateContext));
+    MaterialManager::AddMaterialSRV("Concrete", concreteMaterial.GetMaterialAsTextureArray(m_device, m_immediateContext));
+    MaterialManager::AddMaterialSRV("Gold", goldMaterial.GetMaterialAsTextureArray(m_device, m_immediateContext));
+    MaterialManager::AddMaterialSRV("Marble", marbleMaterial.GetMaterialAsTextureArray(m_device, m_immediateContext));
+    MaterialManager::AddMaterialSRV("Panels", panelsMaterial.GetMaterialAsTextureArray(m_device, m_immediateContext));
+    m_possibleMaterialIDs = { MaterialManager::GetMaterialID("Concrete"), MaterialManager::GetMaterialID("Gold"), MaterialManager::GetMaterialID("Marble"), MaterialManager::GetMaterialID("Panels")};
+
     DirectX::CreateDDSTextureFromFile(m_device, L"Textures\\Skyboxes\\MountainSkybox.dds", nullptr, &m_skyboxSRV);
 
     // initialise and build the scene
@@ -250,6 +288,7 @@ HRESULT DX11App::Init()
     m_scene.RegisterComponent<Mesh>();
     m_scene.RegisterComponent<Spring>();
     m_scene.RegisterComponent<PhysicsMaterial>();
+    m_scene.RegisterComponent<RenderMaterial>();
     
     m_scene.RegisterSystem(std::move(std::make_unique<IntegratorSystem>()));
     m_scene.RegisterSystem(std::move(std::make_unique<ColliderUpdateSystem>()));
@@ -259,6 +298,12 @@ HRESULT DX11App::Init()
     PhysicsHelper::CreateCube(m_scene, m_aabbTree, Vector3::Zero, Vector3(10.0f, 1.0f, 10.0f), Quaternion(), -1.0f);
 
     PhysicsHelper::CreateCube(m_scene, m_aabbTree, Vector3(0.0f, 3.1f, 5.6f), Vector3(10.0f, 5.0f, 1.0f), Quaternion(), -1.0f);
+
+    PhysicsHelper::CreateCube(m_scene, m_aabbTree, Vector3(-5.6f, 3.1f, 0.0f), Vector3(1.0f, 5.0f, 10.0f), Quaternion(), -1.0f);
+
+    PhysicsHelper::CreateCube(m_scene, m_aabbTree, Vector3(5.6f, 3.1f, 0.0f), Vector3(1.0f, 5.0f, 10.0f), Quaternion(), -1.0f);
+
+    PhysicsHelper::CreateCube(m_scene, m_aabbTree, Vector3(0.0f, 3.1f, -5.6f), Vector3(10.0f, 5.0f, 1.0f), Quaternion(), -1.0f);
 
     //PhysicsHelper::CreateCloth(m_scene, m_aabbTree, Vector3(0.0f, 10.0f, 0.0f), 30, 30, 0.2f, 1.0f, true, true, true);
 
@@ -341,7 +386,7 @@ void DX11App::Update()
     ImGuiIO& io = ImGui::GetIO();
     ImGui::Begin("Entity Editor");
 
-    if (io.MouseDown[0] && m_currentClickAction == ClickAction::DRAG && m_draggingEntity != INVALID_ENTITY)
+    if (io.MouseDown[0] && m_currentClickAction == ClickAction::DRAG && m_draggingEntity != INVALID_ENTITY && m_scene.HasComponent<Transform>(m_draggingEntity) && m_scene.HasComponent<Particle>(m_draggingEntity))
     {
         Ray ray = GetRayFromScreenPosition(io.MousePos.x, io.MousePos.y);
         Vector3 newDragPosition = ray.GetOrigin() + ray.GetDirection() * m_draggingDistance;
@@ -412,7 +457,7 @@ void DX11App::Update()
     }
     ImGui::End();
 
-    ImGui::Begin("Interaction Menu");
+    ImGui::Begin("Interaction Options");
     if (ImGui::Button("Add Sphere Entity"))
     {
         if (!m_scene.ReachedEntityCap())
@@ -450,6 +495,10 @@ void DX11App::Update()
                 newEntity,
                 Mesh{ MeshLoader::GetMeshID("Sphere") }
             );
+            m_scene.AddComponent(
+                newEntity,
+                RenderMaterial{ m_possibleMaterialIDs[rand() % m_possibleMaterialIDs.size()]}
+            );
 
             m_aabbTree.InsertEntity(newEntity, AABB::FromPositionScale(Vector3(camPos.x, camPos.y, camPos.z), Vector3::One));
 
@@ -464,6 +513,10 @@ void DX11App::Update()
             XMFLOAT3 camDirection = m_camera->GetLook();
 
             Entity newEntity = m_scene.CreateEntity();
+            m_scene.AddComponent(
+                newEntity,
+                RenderMaterial{ m_possibleMaterialIDs[rand() % m_possibleMaterialIDs.size()] }
+            );
             m_scene.AddComponent(
                 newEntity,
                 Particle(2.0f)
@@ -517,7 +570,14 @@ void DX11App::Update()
     {
         m_showDebugPoints = !m_showDebugPoints;
     }
-    ImGui::Text("Contact Point Visualisation: %s", m_showDebugPoints ? "true" : "false");
+    ImGui::SameLine();
+    ImGui::Text(m_showDebugPoints ? "true" : "false");
+    if (ImGui::Button("Toggle Bounding Volume Visualisation"))
+    {
+        m_showBoundingVolumes = !m_showBoundingVolumes;
+    }
+    ImGui::SameLine();
+    ImGui::Text(m_showBoundingVolumes ? "true" : "false");
     ImGui::End();
 
     ImGui::Begin("Application Stats");
@@ -572,13 +632,23 @@ void DX11App::Draw()
     m_immediateContext->PSSetSamplers(0, 1, &m_defaultSamplerState);
 
     sm->SetActiveShader("SimpleShaders");
+    ID3D11ShaderResourceView* crateSRV = MaterialManager::GetMaterialSRV("Crate");
 
     m_scene.ForEach<Transform, Mesh>([&](Entity entity, Transform* transform, Mesh* mesh) {
         XMMATRIX matrixTransform = XMMatrixScaling(transform->scale.x, transform->scale.y, transform->scale.z) * XMMATRIX(transform->rotation.toRotationMatrix()) * XMMatrixTranslation(transform->position.x, transform->position.y, transform->position.z);
         transformData.World = XMMatrixTranspose(matrixTransform);
         sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
 
-        m_immediateContext->PSSetShaderResources(0, 1, &m_crateMaterialSRV);
+        RenderMaterial* material = m_scene.GetComponent<RenderMaterial>(entity);
+        if (material != nullptr)
+        {
+            ID3D11ShaderResourceView* materialSRV = MaterialManager::GetMaterialSRV(material->materialID);
+            m_immediateContext->PSSetShaderResources(0, 1, &materialSRV);
+        }
+        else
+        {
+            m_immediateContext->PSSetShaderResources(0, 1, &crateSRV);
+        }
 
         MeshData meshData = MeshLoader::GetMesh(mesh->meshID);
 
@@ -601,27 +671,30 @@ void DX11App::Draw()
     MeshData cubeMeshData = MeshLoader::GetMesh("Cube");
     MeshData sphereMeshData = MeshLoader::GetMesh("Sphere");
 
-    XMFLOAT3 camPosDX = m_camera->GetPosition();
-    Vector3 camPos = Vector3(camPosDX.x, camPosDX.y, camPosDX.z);
-    for (const Node& node : m_aabbTree.GetNodes())
+    if (m_showBoundingVolumes)
     {
-        Vector3 boxPos = node.box.GetPosition();
-        if (node.isLeaf && (boxPos - camPos).magnitude() <= 10.0f)// m_aabbTree.GetNode(node.child1).isLeaf || m_aabbTree.GetNode(node.child2).isLeaf)
+        XMFLOAT3 camPosDX = m_camera->GetPosition();
+        Vector3 camPos = Vector3(camPosDX.x, camPosDX.y, camPosDX.z);
+        for (const Node& node : m_aabbTree.GetNodes())
         {
-            Vector3 boxSize = node.box.GetSize();
+            Vector3 boxPos = node.box.GetPosition();
+            if (node.isLeaf && (boxPos - camPos).magnitude() <= 10.0f)
+            {
+                Vector3 boxSize = node.box.GetSize();
 
-            XMMATRIX transform = XMMatrixScaling(boxSize.x, boxSize.y, boxSize.z) * XMMatrixTranslation(boxPos.x, boxPos.y, boxPos.z);
+                XMMATRIX transform = XMMatrixScaling(boxSize.x, boxSize.y, boxSize.z) * XMMatrixTranslation(boxPos.x, boxPos.y, boxPos.z);
 
-            transformData.World = XMMatrixTranspose(transform);
-            sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
+                transformData.World = XMMatrixTranspose(transform);
+                sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
 
-            UINT stride = cubeMeshData.VBStride;
-            UINT offset = cubeMeshData.VBOffset;
+                UINT stride = cubeMeshData.VBStride;
+                UINT offset = cubeMeshData.VBOffset;
 
-            m_immediateContext->IASetVertexBuffers(0, 1, &cubeMeshData.VertexBuffer, &stride, &offset);
-            m_immediateContext->IASetIndexBuffer(cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+                m_immediateContext->IASetVertexBuffers(0, 1, &cubeMeshData.VertexBuffer, &stride, &offset);
+                m_immediateContext->IASetIndexBuffer(cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
-            m_immediateContext->DrawIndexed(cubeMeshData.IndexCount, 0, 0);
+                m_immediateContext->DrawIndexed(cubeMeshData.IndexCount, 0, 0);
+            }
         }
     }
 

@@ -157,6 +157,7 @@
     <ClInclude Include="ImGui\imstb_textedit.h" />
     <ClInclude Include="ImGui\imstb_truetype.h" />
     <ClInclude Include="Material.h" />
+    <ClInclude Include="MaterialManager.h" />
     <ClInclude Include="Matrix3.h" />
     <ClInclude Include="Matrix4.h" />
     <ClInclude Include="MeshLoader.h" />
@@ -207,6 +208,7 @@
     <ClCompile Include="IntegratorSystem.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Material.cpp" />
+    <ClCompile Include="MaterialManager.cpp" />
     <ClCompile Include="MeshLoader.cpp" />
     <ClCompile Include="NarrowPhaseSystem.cpp" />
     <ClCompile Include="OBJLoader.cpp" />

@@ -56,6 +56,11 @@ struct RigidBody
 	}
 };
 
+struct RenderMaterial
+{
+	int materialID;
+};
+
 struct PhysicsMaterial
 {
 	float dynamicFriction = 0.5f;

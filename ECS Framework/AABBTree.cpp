@@ -181,51 +181,22 @@ Entity AABBTree::Intersect(const Ray& ray, float& closestDistance)
 	Entity closestEntity = INVALID_ENTITY;
 	closestDistance = FLT_MAX;
 
-	if (m_rootIndex == NULL_NODE_INDEX)
-		return closestEntity;
-
-	std::priority_queue<std::pair<float, int>, std::vector<std::pair<float, int>>, std::greater<>> queue;
-
-	float initialDistance;
-	if (ray.Intersect(GetNode(m_rootIndex).box, initialDistance))
-		queue.push({ initialDistance, m_rootIndex });
-
-	while (!queue.empty())
+	for (const Node& node : m_nodes)
 	{
-		auto [distance, currentIndex] = queue.top();
-		queue.pop();
-
-		const Node& currentNode = GetNode(currentIndex);
-
-		// Skip nodes farther than the closest intersection found so far
-		if (distance >= closestDistance)
-			continue;
-
-		// Test leaf nodes
-		if (currentNode.isLeaf)
+		if (node.isLeaf)
 		{
-			// This is a leaf node, update closest intersection if needed
-			if (distance < closestDistance)
+			float distance;
+			if (ray.Intersect(node.box, distance))
 			{
-				closestEntity = currentNode.entity;
-				closestDistance = distance;
+				if (distance < closestDistance)
+				{
+					closestDistance = distance;
+					closestEntity = node.entity;
+				}
 			}
 		}
-		else
-		{
-			// Internal node, test children
-			float dist1, dist2;
-
-			bool intersectChild1 = ray.Intersect(GetNode(currentNode.child1).box, dist1);
-			bool intersectChild2 = ray.Intersect(GetNode(currentNode.child2).box, dist2);
-
-			if (intersectChild1)
-				queue.push({ dist1, currentNode.child1 });
-			if (intersectChild2)
-				queue.push({ dist2, currentNode.child2 });
-		}
 	}
-
+	
 	return closestEntity;
 }
 

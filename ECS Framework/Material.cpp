@@ -37,12 +37,12 @@ void Material::SetTexture(TextureType type, ID3D11ShaderResourceView* resource)
 	_textures[(unsigned int)type] = resource;
 }
 
-ID3D11ShaderResourceView* Material::GetTexture(TextureType type)
+ID3D11ShaderResourceView* Material::GetTexture(TextureType type) const
 {
     return _textures[(unsigned int)type];
 }
 
-ID3D11ShaderResourceView* Material::GetMaterialAsTextureArray(ID3D11Device* device, ID3D11DeviceContext* context)
+ID3D11ShaderResourceView* Material::GetMaterialAsTextureArray(ID3D11Device* device, ID3D11DeviceContext* context) const
 {
     // Validate textures
     int textureCount = sizeof(_textures) / sizeof(ID3D11ShaderResourceView*);

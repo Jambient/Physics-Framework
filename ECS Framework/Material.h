@@ -20,8 +20,8 @@ public:
 
     HRESULT LoadTexture(ID3D11Device* device, TextureType type, const std::wstring& filePath);
     void SetTexture(TextureType type, ID3D11ShaderResourceView* resource);
-    ID3D11ShaderResourceView* GetTexture(TextureType type);
-    ID3D11ShaderResourceView* GetMaterialAsTextureArray(ID3D11Device* device, ID3D11DeviceContext* context);
+    ID3D11ShaderResourceView* GetTexture(TextureType type) const;
+    ID3D11ShaderResourceView* GetMaterialAsTextureArray(ID3D11Device* device, ID3D11DeviceContext* context) const;
 
 private:
     ID3D11ShaderResourceView* _textures[6];

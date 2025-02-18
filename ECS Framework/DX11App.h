@@ -85,11 +85,12 @@ private:
 	Entity m_draggingEntity = INVALID_ENTITY;
 	float m_draggingDistance = 0.0f;
 
-	ID3D11ShaderResourceView* m_crateMaterialSRV;
 	ID3D11ShaderResourceView* m_skyboxSRV;
+	std::vector<int> m_possibleMaterialIDs;
 
 	std::vector<Vector3> m_debugPoints;
 	bool m_showDebugPoints = false;
+	bool m_showBoundingVolumes = false;
 
 	float m_physicsDuration = 0.0f;
 
