@@ -4,6 +4,7 @@
 #include <iostream>
 #include <functional>
 #include <stack>
+#include <sstream>
 
 struct QueueNode {
 	int index;
@@ -229,6 +230,51 @@ Entity AABBTree::Intersect(const Ray& ray, float& closestDistance)
 	return closestEntity;
 }
 
+int AABBTree::GetDeepestLevel(int levelLimit)
+{
+	// If the tree is empty, return 0.
+	if (m_rootIndex == NULL_NODE_INDEX)
+		return 0;
+
+	int maxLevelFound = 0;
+	// Use a queue that stores pairs of (nodeIndex, currentLevel)
+	std::queue<std::pair<int, int>> nodeQueue;
+	nodeQueue.push({ m_rootIndex, 1 }); // starting at level 1
+
+	while (!nodeQueue.empty())
+	{
+		auto [nodeIndex, level] = nodeQueue.front();
+		nodeQueue.pop();
+
+		maxLevelFound = std::max(maxLevelFound, level);
+
+		// If we've reached the limit, do not add this node's children.
+		if (level >= levelLimit)
+			continue;
+
+		// Retrieve the current node using your sparse/dense mapping.
+		const Node& node = m_nodes[m_nodeToDenseIndex[nodeIndex]];
+
+		// If it's not a leaf, enqueue its children with the next level.
+		if (!node.isLeaf)
+		{
+			if (node.child1 != NULL_NODE_INDEX)
+				nodeQueue.push({ node.child1, level + 1 });
+			if (node.child2 != NULL_NODE_INDEX)
+				nodeQueue.push({ node.child2, level + 1 });
+		}
+	}
+
+	return maxLevelFound;
+}
+
+std::string AABBTree::GetSizeInformation()
+{
+	std::ostringstream oss;
+	oss << "AABBTree sizes: nodes > " << m_nodes.size() << " compared to " << m_nodeCount << " :--: nodeToDense > " << m_nodeToDenseIndex.size() << " :--: " << m_denseToNodeIndex.size() << " :--: " << m_availableNodes.size() << " :--: " << m_entityToNodeIndex.size();
+	return oss.str();
+}
+
 std::vector<std::pair<Entity, Entity>> AABBTree::GetPotentialIntersections()
 {
 	std::vector<std::pair<Entity, Entity>> intersections;
@@ -318,6 +364,11 @@ int AABBTree::AllocateInternalNode()
 void AABBTree::DeallocateNode(int index)
 {
 	size_t removedDenseIndex = m_nodeToDenseIndex[index];
+	if (removedDenseIndex == NULL_NODE_INDEX) 
+	{ 
+		return; 
+	}
+
 	size_t lastDenseIndex = m_nodes.size() - 1;
 
 	if (removedDenseIndex != lastDenseIndex)
@@ -407,7 +458,14 @@ void AABBTree::RefitFromNode(int index, bool rotateTree)
 		currentNode.box = AABB::Union(child1.box, child2.box);
 		currentNode.isStatic = child1.isStatic && child2.isStatic;
 
-		index = currentNode.parentIndex;
+		int parentIndex = currentNode.parentIndex;
+
+		/*if (rotateTree)
+		{
+			Rotate(index);
+		}*/
+
+		index = parentIndex;
 	}
 }
 
@@ -426,7 +484,125 @@ bool AABBTree::NeedsUpdate(int index)
 		upperBoundNew.x > upperBoundOld.x || upperBoundNew.y > upperBoundOld.y || upperBoundNew.z > upperBoundOld.z);
 }
 
+int AABBTree::GetNodeHeight(int index)
+{
+	if (index == NULL_NODE_INDEX) { return 0; }
+
+	Node& node = GetNode(index);
+	if (node.isLeaf) { return 0; }
+
+	return 1 + std::max(GetNodeHeight(node.child1), GetNodeHeight(node.child2));
+}
+
 void AABBTree::Rotate(int index)
 {
+	// Get the node to potentially balance.
+	Node& A = GetNode(index);
 
+	// Do nothing if A is a leaf or has height less than 2 (no imbalance possible).
+	if (A.isLeaf || GetNodeHeight(index) < 2)
+		return;
+
+	int leftIndex = A.child1;
+	int rightIndex = A.child2;
+	Node& B = GetNode(leftIndex);
+	Node& C = GetNode(rightIndex);
+
+	// Compute a balance factor based on the heights of the two children.
+	int balance = GetNodeHeight(rightIndex) - GetNodeHeight(leftIndex);
+
+	// --- LEFT ROTATION: right subtree is heavier ---
+	if (balance > 1)
+	{
+		// In this case, A is imbalanced toward the right.
+		int F_index = C.child1;
+		int G_index = C.child2;
+		Node& F = GetNode(F_index);
+		Node& G = GetNode(G_index);
+
+		// Attach C in place of A.
+		int parentIndex = A.parentIndex;
+		C.parentIndex = parentIndex;
+		if (parentIndex != NULL_NODE_INDEX) {
+			Node& parent = GetNode(parentIndex);
+			if (parent.child1 == index)
+				parent.child1 = rightIndex;
+			else
+				parent.child2 = rightIndex;
+		}
+		else {
+			// A was the root, so now C becomes the root.
+			m_rootIndex = rightIndex;
+		}
+
+		// Perform rotation:
+		// A adopts F as its new right child.
+		A.child2 = F_index;
+		F.parentIndex = index;
+
+		// C now becomes the parent of A.
+		C.child1 = index;
+		A.parentIndex = rightIndex;
+
+		// Update A's bounding box and isStatic flag.
+		{
+			A.box = AABB::Union(GetNode(A.child1).box, GetNode(A.child2).box);
+			A.enlargedBox = A.box.GetEnlarged(BOX_ENLARGEMENT_FACTOR);
+			A.isStatic = GetNode(A.child1).isStatic && GetNode(A.child2).isStatic;
+		}
+
+		// Update C's bounding box and isStatic flag.
+		{
+			C.box = AABB::Union(GetNode(C.child1).box, GetNode(C.child2).box);
+			C.enlargedBox = C.box.GetEnlarged(BOX_ENLARGEMENT_FACTOR);
+			C.isStatic = GetNode(C.child1).isStatic && GetNode(C.child2).isStatic;
+		}
+	}
+	// --- RIGHT ROTATION: left subtree is heavier ---
+	else if (balance < -1)
+	{
+		// A is imbalanced toward the left.
+		int D_index = B.child1;
+		int E_index = B.child2;
+		Node& D = GetNode(D_index);
+		Node& E = GetNode(E_index);
+
+		// Attach B in place of A.
+		int parentIndex = A.parentIndex;
+		B.parentIndex = parentIndex;
+		if (parentIndex != NULL_NODE_INDEX) {
+			Node& parent = GetNode(parentIndex);
+			if (parent.child1 == index)
+				parent.child1 = leftIndex;
+			else
+				parent.child2 = leftIndex;
+		}
+		else {
+			// A was the root, so now B becomes the root.
+			m_rootIndex = leftIndex;
+		}
+
+		// Perform rotation:
+		// A adopts E as its new left child.
+		A.child1 = E_index;
+		E.parentIndex = index;
+
+		// B now becomes the parent of A.
+		B.child2 = index;
+		A.parentIndex = leftIndex;
+
+		// Update A's bounding box and isStatic flag.
+		{
+			A.box = AABB::Union(GetNode(A.child1).box, GetNode(A.child2).box);
+			A.enlargedBox = A.box.GetEnlarged(BOX_ENLARGEMENT_FACTOR);
+			A.isStatic = GetNode(A.child1).isStatic && GetNode(A.child2).isStatic;
+		}
+
+		// Update B's bounding box and isStatic flag.
+		{
+			B.box = AABB::Union(GetNode(B.child1).box, GetNode(B.child2).box);
+			B.enlargedBox = B.box.GetEnlarged(BOX_ENLARGEMENT_FACTOR);
+			B.isStatic = GetNode(B.child1).isStatic && GetNode(B.child2).isStatic;
+		}
+	}
 }

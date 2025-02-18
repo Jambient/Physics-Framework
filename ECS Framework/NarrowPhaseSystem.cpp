@@ -33,6 +33,8 @@ void NarrowPhaseSystem::Update(ECSScene& scene, float dt)
         collisions.push_back({ entity1, entity2, manifold });
     }
 
+    std::cout << "Collisions Count: " << "potential: " << potential.size() << " actual: " << collisions.size() << std::endl;
+
     // resolve velocities
     for (int i = 0; i < VELOCITY_ITERATIONS; i++)
     {

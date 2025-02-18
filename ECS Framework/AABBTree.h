@@ -84,6 +84,9 @@ public:
 
 	int GetRootIndex() const { return m_rootIndex; }
 
+	int GetDeepestLevel(int levelLimit);
+	std::string GetSizeInformation();
+
 	std::vector<std::pair<Entity, Entity>> GetPotentialIntersections();
 
 private:
@@ -101,6 +104,8 @@ private:
 
 	void RefitFromNode(int index, bool rotateTree = false);
 	bool NeedsUpdate(int index);
+
+	int GetNodeHeight(int index);
 
 	void Rotate(int index);
 

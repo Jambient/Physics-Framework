@@ -314,7 +314,7 @@ HRESULT DX11App::Init()
         entities[0],
         Mesh{ MeshLoader::GetMeshID("Cube") }
     );
-    m_aabbTree.InsertEntity(entities[0], AABB::FromPositionScale(Vector3::Zero, Vector3(10.0f, 1.0f, 10.0f)), true);
+    m_aabbTree.InsertEntity(entities[0], AABB::FromPositionScale(Vector3::Zero, Vector3(10.0f, 1.0f, 10.0f)), false);
 
     // walls
     m_scene.AddComponent(
@@ -338,7 +338,7 @@ HRESULT DX11App::Init()
         entities[2],
         Mesh{ MeshLoader::GetMeshID("Cube") }
     );
-    m_aabbTree.InsertEntity(entities[2], AABB::FromPositionScale(Vector3(0.0f, 3.1f, 5.6f), Vector3(10.0f, 5.0f, 1.0f)), true);
+    m_aabbTree.InsertEntity(entities[2], AABB::FromPositionScale(Vector3(0.0f, 3.1f, 5.6f), Vector3(10.0f, 5.0f, 1.0f)), false);
 
     // cube
     //m_scene.AddComponent(
@@ -415,7 +415,7 @@ HRESULT DX11App::Init()
         Spring{ entities[1], entities[3], 3.0f, 0.5f }
     );*/
 
-    //PhysicsHelper::CreateCloth(m_scene, m_aabbTree, Vector3(0.0f, 10.0f, 0.0f), 30, 30, 0.2f, 1.0f, true, true, true);
+    PhysicsHelper::CreateCloth(m_scene, m_aabbTree, Vector3(0.0f, 40.0f, 0.0f), 30, 30, 0.2f, 1.0f, true, false, false);
 
     /*Entity testSphereEntity = m_scene.CreateEntity();
     Vector3 sphereCenter = Vector3(startPosition.x + cols / 2 * spacing, 7.0f, startPosition.z + rows / 2 * spacing);
@@ -705,6 +705,8 @@ void DX11App::Update()
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
     ImGui::Text("Entity Count: %d of %d", m_scene.GetEntityCount(), MAX_ENTITIES);
     ImGui::Text("Physics Computation Time: %.3f ms", m_physicsDuration);
+    ImGui::Text("AABB tree deepest level: %d", m_aabbTree.GetDeepestLevel(150));
+    ImGui::Text(m_aabbTree.GetSizeInformation().c_str());
     ImGui::End();
 
     ImGui::Begin("Click Options");
