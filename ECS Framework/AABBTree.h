@@ -99,10 +99,8 @@ private:
 
 	int PickBest(const AABB& leafBox);
 
-	void RefitFromNode(int index, bool rotateTree = false);
+	void RefitFromNode(int index);
 	bool NeedsUpdate(int index);
-
-	void Rotate(int index);
 
 	void PotentialIntersectionHelper(std::vector<std::pair<Entity, Entity>>& intersections, std::unordered_set<uint64_t>& found, int nodeA, int nodeB);
 

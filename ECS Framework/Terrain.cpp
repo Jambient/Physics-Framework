@@ -93,16 +93,16 @@ void Terrain::BuildCollision(ECSScene* scene, AABBTree* tree)
 		Entity entity = scene->CreateEntity();
 		scene->AddComponent(
 			entity,
-			Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 0.0f, 0.15f }
+			Transform(center, Quaternion(), Vector3::One)
 		);
-		scene->AddComponent(
+		/*scene->AddComponent(
 			entity,
-			Transform{ center, Quaternion(), Vector3::One }
-		);
-		scene->AddComponent(
+			Particle(-1.0f)
+		);*/
+		/*scene->AddComponent(
 			entity,
-			RigidBody{ Vector3::Zero, Vector3::Zero, Vector3::Zero, Matrix3(Vector3::Zero) }
-		);
+			RigidBody(Vector3::Zero)
+		);*/
 		scene->AddComponent(
 			entity,
 			Collider{ HalfSpaceTriangle(p1, p2, p3, normal) }

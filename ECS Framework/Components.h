@@ -8,6 +8,9 @@
 
 struct Transform
 {
+	Transform(Vector3 position, Quaternion rotation, Vector3 scale) : position(position),
+		rotation(rotation), scale(scale) {};
+
 	Vector3 position = Vector3::Zero;
 	Quaternion rotation;
 	Vector3 scale = Vector3::Zero;
@@ -15,6 +18,8 @@ struct Transform
 
 struct Particle
 {
+	Particle(float mass) : inverseMass(mass > 0.0f ? 1.0f / mass : 0.0f) {};
+
 	// Holds the linear velocity of the particle in world space.
 	Vector3 linearVelocity = Vector3::Zero;
 
@@ -27,9 +32,6 @@ struct Particle
 	// Holds the inverse of the mass of the particle.
 	float inverseMass;
 
-	// Coefficient of Restitution.
-	float restitution;
-
 	void ApplyLinearImpulse(const Vector3& force)
 	{
 		linearVelocity += force * inverseMass;
@@ -38,6 +40,8 @@ struct Particle
 
 struct RigidBody
 {
+	RigidBody(Vector3 inverseInertia) : inverseInertia(inverseInertia), inverseInertiaTensor(inverseInertia) {};
+
 	Vector3 angularVelocity = Vector3::Zero;
 
 	Vector3 torque = Vector3::Zero;
@@ -54,9 +58,8 @@ struct RigidBody
 
 struct PhysicsMaterial
 {
-	float staticFriction = 0.6f;
-	float dynamicFriction = 0.4f;
-	// possible coefficient of restitution in here as well
+	float dynamicFriction = 0.5f;
+	float restitution = 0.5f;
 };
 
 struct Mesh

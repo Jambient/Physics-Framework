@@ -3,7 +3,47 @@
 #include "Components.h"
 #include "MeshLoader.h"
 #include "AABBTree.h"
+#include "Vector3.h"
+#include "Quaternion.h"
 #include <vector>
+
+void PhysicsHelper::CreateCube(ECSScene& scene, AABBTree& tree, Vector3 center, Vector3 size, Quaternion rotation, float mass)
+{
+    Entity entity = scene.CreateEntity();
+
+    Vector3 inverseInertia = Vector3::Zero;
+    if (mass > 0)
+    {
+        inverseInertia = Vector3(
+            (1.0f / 12.0f) * mass * (size.y * size.y + size.z * size.z),
+            (1.0f / 12.0f) * mass * (size.x * size.x + size.z * size.z),
+            (1.0f / 12.0f) * mass * (size.x * size.x + size.y * size.y)
+        ).reciprocal();
+    }
+
+    scene.AddComponent(
+        entity,
+        Transform(center, rotation, size)
+    );
+    scene.AddComponent(
+        entity,
+        Particle(mass)
+    );
+    scene.AddComponent(
+        entity,
+        RigidBody(inverseInertia)
+    );
+    scene.AddComponent(
+        entity,
+        Collider{ OBB(center, size, rotation) }
+    );
+    scene.AddComponent(
+        entity,
+        Mesh{ MeshLoader::GetMeshID("Cube") }
+    );
+
+    tree.InsertEntity(entity, AABB::FromPositionScale(Vector3::Zero, Vector3(10.0f, 1.0f, 10.0f)), mass <= 0);
+}
 
 void PhysicsHelper::CreateCloth(ECSScene& scene, AABBTree& tree, Vector3 center, unsigned int rows, unsigned int cols, float spacing, float stiffness, bool hasStructureSprings, bool hasShearingSprings, bool hasBendingSrings)
 {
@@ -21,20 +61,20 @@ void PhysicsHelper::CreateCloth(ECSScene& scene, AABBTree& tree, Vector3 center,
         {
             Vector3 pointPosition = startPosition + Vector3::Right * x * spacing + Vector3::Forward * y * spacing;
             float anchored = y == 0 || y == rows - 1 || x == 0 || x == cols - 1;
-            float mass = anchored ? 0.0f : 1 / 0.05f;
+            float mass = anchored ? -1.0f : 0.05f;
 
             currentEntityNum = scene.CreateEntity();
             scene.AddComponent(
                 currentEntityNum,
-                Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, mass, 0.2f }
+                Particle(mass)
             );
             scene.AddComponent(
                 currentEntityNum,
-                Transform{ pointPosition, Quaternion(), Vector3(0.05f, 0.05f, 0.05f) }
+                Transform(pointPosition, Quaternion(), Vector3(0.05f, 0.05f, 0.05f))
             );
             scene.AddComponent(
                 currentEntityNum,
-                RigidBody{ Vector3::Zero, Vector3::Zero, Vector3::Zero, Matrix3(Vector3::Zero) }
+                RigidBody(Vector3::Zero)
             );
             scene.AddComponent(
                 currentEntityNum,

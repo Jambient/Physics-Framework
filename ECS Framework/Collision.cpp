@@ -422,7 +422,7 @@ bool HandleHSTriSphereCollision(const ColliderBase& a, const ColliderBase& b, Co
 
     float distance = Vector3::Dot(sphereB.GetCenter() - triangleA.GetPoint(0), triangleA.GetNormal());
 
-    if (distance >= 0 && distance <= sphereB.GetRadius())
+    if (distance <= sphereB.GetRadius())
     {
         // barycentric coordinate check to confirm point is inside triangle
         Vector3 contactPoint = sphereB.GetCenter() - triangleA.GetNormal() * distance;

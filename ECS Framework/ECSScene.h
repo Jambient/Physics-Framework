@@ -157,7 +157,14 @@ public:
 	template <typename T>
 	T* GetComponent(Entity entity)
 	{
-		return m_componentManager->GetComponent<T>(entity, m_entityManager->GetSignature(entity));
+		if (HasComponent<T>(entity))
+		{
+			return m_componentManager->GetComponent<T>(entity, m_entityManager->GetSignature(entity));
+		}
+		else
+		{
+			return nullptr;
+		}
 	}
 
 	/**

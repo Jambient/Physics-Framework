@@ -79,7 +79,7 @@ void AABBTree::InsertEntity(Entity entity, AABB box, bool isStatic)
 	GetNode(leafIndex).parentIndex = newParent;
 
 	// stage 3: walk back up the tree refitting AABBs
-	RefitFromNode(newParent, true);
+	RefitFromNode(newParent);
 }
 
 void AABBTree::RemoveLeaf(int leafIndex)
@@ -396,7 +396,7 @@ int AABBTree::PickBest(const AABB& leafBox)
 	return bestSibling;
 }
 
-void AABBTree::RefitFromNode(int index, bool rotateTree)
+void AABBTree::RefitFromNode(int index)
 {
 	while (index != NULL_NODE_INDEX)
 	{
@@ -424,9 +424,4 @@ bool AABBTree::NeedsUpdate(int index)
 
 	return (lowerBoundNew.x < lowerBoundOld.x || lowerBoundNew.y < lowerBoundOld.y || lowerBoundNew.z < lowerBoundOld.z ||
 		upperBoundNew.x > upperBoundOld.x || upperBoundNew.y > upperBoundOld.y || upperBoundNew.z > upperBoundOld.z);
-}
-
-void AABBTree::Rotate(int index)
-{
-
 }

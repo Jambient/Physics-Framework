@@ -249,199 +249,18 @@ HRESULT DX11App::Init()
     m_scene.RegisterComponent<Collider>();
     m_scene.RegisterComponent<Mesh>();
     m_scene.RegisterComponent<Spring>();
+    m_scene.RegisterComponent<PhysicsMaterial>();
     
     m_scene.RegisterSystem(std::move(std::make_unique<IntegratorSystem>()));
     m_scene.RegisterSystem(std::move(std::make_unique<ColliderUpdateSystem>()));
     m_scene.RegisterSystem(std::move(std::make_unique<BroadPhaseUpdateSystem>(m_aabbTree)));
     m_scene.RegisterSystem(std::move(std::make_unique<NarrowPhaseSystem>(m_aabbTree, m_debugPoints)));
 
-    std::vector<Entity> entities(MAX_ENTITIES);
+    PhysicsHelper::CreateCube(m_scene, m_aabbTree, Vector3::Zero, Vector3(10.0f, 1.0f, 10.0f), Quaternion(), -1.0f);
 
-    std::default_random_engine generator;
-    std::uniform_real_distribution<float> randPosition(-30.0f, 30.0f);
-    std::uniform_real_distribution<float> randRotation(0.0f, 3.0f);
-    std::uniform_real_distribution<float> randScale(3.0f, 5.0f);
-    std::uniform_real_distribution<float> randGravity(-10.0f, -1.0f);
-    std::uniform_real_distribution<float> randVelocity(-1.5f, 1.5f);
-
-    /* Entity e1 = m_scene.CreateEntity();
-    m_scene.AddComponent(
-        e1,
-        Particle{ Vector3::Left * 2.0f, Vector3::Zero, Vector3::Down, 0.99f, 1 / 2.0f}
-    );
-
-    Entity e2 = m_scene.CreateEntity();
-    m_scene.AddComponent(
-        e2,
-        Particle{ Vector3::Right * 2.0f, Vector3::Zero, Vector3::Down, 0.99f, 1 / 2.0f }
-    );
-
-    m_aabbTree.InsertEntity(e1, AABB(Vector3::Left * 2.0f, Vector3::One));
-    m_aabbTree.InsertEntity(e2, AABB(Vector3::Right * 2.0f, Vector3::One));
-
-    m_aabbTree.PrintTree(m_aabbTree.GetRootIndex());*/
-
-    entities[0] = m_scene.CreateEntity();
-    entities[1] = m_scene.CreateEntity();
-    entities[2] = m_scene.CreateEntity();
-    entities[3] = m_scene.CreateEntity();
-    entities[4] = m_scene.CreateEntity();
-
-    Vector3 inverseCubeInertia = Vector3(
-        (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f),
-        (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f),
-        (1.0f / 12.0f) * 2.0f * (1.0f + 1.0f)
-    ).reciprocal();
-
-    m_scene.AddComponent(
-        entities[0],
-        Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 0.0f, 0.6f }
-    );
-    m_scene.AddComponent(
-        entities[0],
-        Transform{ Vector3::Zero, Quaternion(), Vector3(10.0f, 1.0f, 10.0f) }
-    );
-    m_scene.AddComponent(
-        entities[0],
-        RigidBody{ Vector3::Zero, Vector3::Zero, Vector3::Zero, Matrix3(Vector3::Zero) }
-    );
-    m_scene.AddComponent(
-        entities[0],
-        Collider{ OBB(Vector3::Zero, Vector3(10.0f, 1.0f, 10.0f), Quaternion()) }
-        //Collider{ AABB::FromPositionScale(Vector3::Zero, Vector3(10.0f, 1.0f, 10.0f)) }
-    );
-    m_scene.AddComponent(
-        entities[0],
-        Mesh{ MeshLoader::GetMeshID("Cube") }
-    );
-    m_aabbTree.InsertEntity(entities[0], AABB::FromPositionScale(Vector3::Zero, Vector3(10.0f, 1.0f, 10.0f)), true);
-
-    // walls
-    m_scene.AddComponent(
-        entities[2],
-        Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 0.0f, 0.15f }
-    );
-    m_scene.AddComponent(
-        entities[2],
-        Transform{ Vector3(0.0f, 3.1f, 5.6f), Quaternion(), Vector3(10.0f, 5.0f, 1.0f)}
-    );
-    m_scene.AddComponent(
-        entities[2],
-        RigidBody{ Vector3::Zero, Vector3::Zero, Vector3::Zero, Matrix3(Vector3::Zero) }
-    );
-    m_scene.AddComponent(
-        entities[2],
-        //Collider{ AABB::FromPositionScale(Vector3(0.0f, 3.1f, 5.6f), Vector3(10.0f, 5.0f, 1.0f)) }
-        Collider{ OBB(Vector3(0.0f, 3.1f, 5.6f), Vector3(10.0f, 5.0f, 1.0f), Quaternion()) }
-    );
-    m_scene.AddComponent(
-        entities[2],
-        Mesh{ MeshLoader::GetMeshID("Cube") }
-    );
-    m_aabbTree.InsertEntity(entities[2], AABB::FromPositionScale(Vector3(0.0f, 3.1f, 5.6f), Vector3(10.0f, 5.0f, 1.0f)), true);
-
-    // cube
-    //m_scene.AddComponent(
-    //    entities[1],
-    //    Particle{ Vector3::Zero, Vector3::Zero, 1 / 2.0f, 0.8f }
-    //);
-    //m_scene.AddComponent(
-    //    entities[1],
-    //    Transform{ Vector3::Up * 5, Quaternion(), Vector3(1.0f, 1.0f, 1.0f)}
-    //);
-    //m_scene.AddComponent(
-    //    entities[1],
-    //    RigidBody{ Vector3::Zero, Vector3::Zero, inverseCubeInertia, Matrix3(inverseCubeInertia) }
-    //);
-    //m_scene.AddComponent(
-    //    entities[1],
-    //    Collider{ OBB(Vector3::Up * 5.0f, Vector3::One, Quaternion()) }
-    //    //Collider{ AABB::FromPositionScale(Vector3::Up * 5, Vector3::One) }
-    //);
-    //m_scene.AddComponent(
-    //    entities[1],
-    //    Mesh{ MeshLoader::GetMeshID("Cube") }
-    //);
-    //m_aabbTree.InsertEntity(entities[1], AABB::FromPositionScale(Vector3::Up * 5.0f, Vector3::One));
-
-    Vector3 testInverseInertia = Vector3(
-        (1.0f / 12.0f) * 2.0f * (1.0f + 3.0f),
-        (1.0f / 12.0f) * 2.0f * (3.0f + 3.0f),
-        (1.0f / 12.0f) * 2.0f * (3.0f + 1.0f)
-    ).reciprocal();
-
-    //Vector3 testObjectPosition = Vector3::Up * 5.0f + Vector3::Right * 1.5f;
-    //Quaternion testObjectRotation = Quaternion::FromEulerAngles(Vector3(0.0f, 0.0, XMConvertToRadians(30.0f)));
-    //m_scene.AddComponent(
-    //    entities[1],
-    //    Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 1.0f / 2.0f, 0.0f }
-    //);
-    //m_scene.AddComponent(
-    //    entities[1],
-    //    Transform{ testObjectPosition, testObjectRotation, Vector3(3.0f, 1.0f, 3.0f)}
-    //    //Transform{ testObjectPosition, Quaternion(), Vector3(3.0f, 1.0f, 3.0f) }
-    //);
-    //m_scene.AddComponent(
-    //    entities[1],
-    //    RigidBody{ Vector3::Zero, Vector3::Zero, testInverseInertia, Matrix3(testInverseInertia) }
-    //);
-    //m_scene.AddComponent(
-    //    entities[1],
-    //    Collider{ OBB(testObjectPosition, Vector3::One, testObjectRotation) }
-    //);
-    //m_scene.AddComponent(
-    //    entities[1],
-    //    Mesh{ MeshLoader::GetMeshID("Cube") }
-    //);
-    //m_aabbTree.InsertEntity(entities[1], AABB::FromPositionScale(testObjectPosition, Vector3::One));
-
-    // CLOTH
-    /*m_scene.AddComponent(
-        entities[3],
-        Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 1 / 1.5f, 0.8f }
-    );
-    m_scene.AddComponent(
-        entities[3],
-        Transform{ Vector3::Up * 3, Quaternion(), Vector3(1.0f, 1.0f, 1.0f)}
-    );
-    m_scene.AddComponent(
-        entities[3],
-        Mesh{ MeshLoader::GetMeshID("Cube") }
-    );
-    m_aabbTree.InsertEntity(entities[3], AABB::FromPositionScale(Vector3::Up * 3.0f, Vector3::One));
-
-    m_scene.AddComponent(
-        entities[4],
-        Spring{ entities[1], entities[3], 3.0f, 0.5f }
-    );*/
+    PhysicsHelper::CreateCube(m_scene, m_aabbTree, Vector3(0.0f, 3.1f, 5.6f), Vector3(10.0f, 5.0f, 1.0f), Quaternion(), -1.0f);
 
     //PhysicsHelper::CreateCloth(m_scene, m_aabbTree, Vector3(0.0f, 10.0f, 0.0f), 30, 30, 0.2f, 1.0f, true, true, true);
-
-    /*Entity testSphereEntity = m_scene.CreateEntity();
-    Vector3 sphereCenter = Vector3(startPosition.x + cols / 2 * spacing, 7.0f, startPosition.z + rows / 2 * spacing);
-    m_scene.AddComponent(
-        testSphereEntity,
-        Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 0.0f, 0.2f }
-    );
-    m_scene.AddComponent(
-        testSphereEntity,
-        Transform{ sphereCenter, Quaternion(), Vector3::One }
-    );
-    m_scene.AddComponent(
-        testSphereEntity,
-        RigidBody{ Vector3::Zero, Vector3::Zero, Vector3::Zero, Matrix3(Vector3::Zero) }
-    );
-    m_scene.AddComponent(
-        testSphereEntity,
-        Collider{ Sphere(sphereCenter, 1.0f) }
-    );
-    m_scene.AddComponent(
-        testSphereEntity,
-        Mesh{ MeshLoader::GetMeshID("Sphere") }
-    );
-    m_aabbTree.InsertEntity(testSphereEntity, AABB::FromPositionScale(sphereCenter, Vector3::One));*/
-
-    ////////////////////////////////////////
 
     // create terrain
     m_terrain = new Terrain();
@@ -604,11 +423,11 @@ void DX11App::Update()
             Entity newEntity = m_scene.CreateEntity();
             m_scene.AddComponent(
                 newEntity,
-                Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 1 / 2.0f, 0.8f }
+                Particle(2.0f)
             );
             m_scene.AddComponent(
                 newEntity,
-                Transform{ Vector3(camPos.x, camPos.y, camPos.z), Quaternion(), Vector3::One / 2.0f }
+                Transform(Vector3(camPos.x, camPos.y, camPos.z), Quaternion(), Vector3::One / 2.0f)
             );
 
             float intertiaValue = (2.0f / 5.0f) * 2.0f * (0.5f * 0.5f);
@@ -620,7 +439,7 @@ void DX11App::Update()
 
             m_scene.AddComponent(
                 newEntity,
-                RigidBody{ Vector3::Zero, Vector3::Zero, inverseSphereInertia, Matrix3(inverseSphereInertia) }
+                RigidBody(inverseSphereInertia)
             );
 
             m_scene.AddComponent(
@@ -647,11 +466,11 @@ void DX11App::Update()
             Entity newEntity = m_scene.CreateEntity();
             m_scene.AddComponent(
                 newEntity,
-                Particle{ Vector3::Zero, Vector3::Zero, Vector3::Zero, 1 / 2.0f, 0.8f }
+                Particle(2.0f)
             );
             m_scene.AddComponent(
                 newEntity,
-                Transform{ Vector3(camPos.x, camPos.y, camPos.z), Quaternion(), Vector3::One }
+                Transform(Vector3(camPos.x, camPos.y, camPos.z), Quaternion(), Vector3::One)
             );
 
             Vector3 inverseCubeInertia = Vector3(
@@ -662,7 +481,7 @@ void DX11App::Update()
 
             m_scene.AddComponent(
                 newEntity,
-                RigidBody{ Vector3::Zero, Vector3::Zero, inverseCubeInertia, Matrix3(inverseCubeInertia) }
+                RigidBody(inverseCubeInertia)
             );
 
             m_scene.AddComponent(
@@ -782,29 +601,29 @@ void DX11App::Draw()
     MeshData cubeMeshData = MeshLoader::GetMesh("Cube");
     MeshData sphereMeshData = MeshLoader::GetMesh("Sphere");
 
-    //XMFLOAT3 camPosDX = m_camera->GetPosition();
-    //Vector3 camPos = Vector3(camPosDX.x, camPosDX.y, camPosDX.z);
-    //for (const Node& node : m_aabbTree.GetNodes())
-    //{
-    //    Vector3 boxPos = node.box.GetPosition();
-    //    if ((boxPos - camPos).magnitude() <= 10.0f)// m_aabbTree.GetNode(node.child1).isLeaf || m_aabbTree.GetNode(node.child2).isLeaf)
-    //    {
-    //        Vector3 boxSize = node.box.GetSize();
+    XMFLOAT3 camPosDX = m_camera->GetPosition();
+    Vector3 camPos = Vector3(camPosDX.x, camPosDX.y, camPosDX.z);
+    for (const Node& node : m_aabbTree.GetNodes())
+    {
+        Vector3 boxPos = node.box.GetPosition();
+        if (node.isLeaf && (boxPos - camPos).magnitude() <= 10.0f)// m_aabbTree.GetNode(node.child1).isLeaf || m_aabbTree.GetNode(node.child2).isLeaf)
+        {
+            Vector3 boxSize = node.box.GetSize();
 
-    //        XMMATRIX transform = XMMatrixScaling(boxSize.x, boxSize.y, boxSize.z) * XMMatrixTranslation(boxPos.x, boxPos.y, boxPos.z);
+            XMMATRIX transform = XMMatrixScaling(boxSize.x, boxSize.y, boxSize.z) * XMMatrixTranslation(boxPos.x, boxPos.y, boxPos.z);
 
-    //        transformData.World = XMMatrixTranspose(transform);
-    //        sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
+            transformData.World = XMMatrixTranspose(transform);
+            sm->SetConstantBuffer<TransformBuffer>("TransformBuffer", transformData);
 
-    //        UINT stride = cubeMeshData.VBStride;
-    //        UINT offset = cubeMeshData.VBOffset;
+            UINT stride = cubeMeshData.VBStride;
+            UINT offset = cubeMeshData.VBOffset;
 
-    //        m_immediateContext->IASetVertexBuffers(0, 1, &cubeMeshData.VertexBuffer, &stride, &offset);
-    //        m_immediateContext->IASetIndexBuffer(cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+            m_immediateContext->IASetVertexBuffers(0, 1, &cubeMeshData.VertexBuffer, &stride, &offset);
+            m_immediateContext->IASetIndexBuffer(cubeMeshData.IndexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
-    //        m_immediateContext->DrawIndexed(cubeMeshData.IndexCount, 0, 0);
-    //    }
-    //}
+            m_immediateContext->DrawIndexed(cubeMeshData.IndexCount, 0, 0);
+        }
+    }
 
     if (m_showDebugPoints)
     {
